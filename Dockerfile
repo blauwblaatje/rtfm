@@ -1,5 +1,5 @@
 # RTFM in a container: a static Go binary on distroless, as a non-root user.
-# Build: docker build -t rtfm .   (put WFTDA's blank statsbooks in blank/ first)
+# Build: docker build -t rtfm .
 # Multi-arch (amd64, arm64 for a Raspberry Pi k3s node): make image-multi
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS TARGETARCH VERSION=dev
@@ -7,7 +7,7 @@ WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -mod=vendor -trimpath \
       -ldflags "-s -w -X main.version=$VERSION" -o /out/rtfm ./cmd/rtfm
-# The blank statsbooks, if blank/ has them (it may not: then mount a folder).
+# WFTDA's blank statsbooks (blank/), filled in for every game.
 RUN mkdir -p /out/data /out/blank && find blank -name '*.xlsx' -exec cp {} /out/blank/ \;
 
 FROM gcr.io/distroless/static-debian12:nonroot

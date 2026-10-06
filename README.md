@@ -47,24 +47,23 @@ Settings (flags or environment):
 | Flag | Environment | Default | |
 |---|---|---|---|
 | `-addr` | `RTFM_ADDR` | `:8080` | where to listen |
-| `-blank` | `RTFM_BLANK` | | folder with WFTDA's blank statsbooks; each `.xlsx` is offered by file name (A4, US Letter) |
+| `-blank` | `RTFM_BLANK` | | folder with WFTDA's blank statsbooks; each `.xlsx` is offered by file name (A4, US Letter); `blank/` has them |
 | `-data` | `RTFM_DATA` | | folder to keep loaded tournaments in; empty keeps them in memory only |
 | `-keep` | `RTFM_KEEP` | `1440h` | how long a loaded tournament is kept (60 days) |
 
-The blank statsbooks are WFTDA's and aren't in this repository: see
-[blank/README.md](blank/README.md).
+WFTDA's blank statsbooks (A4 and US Letter) are in `blank/`, and built into
+the container image: see [blank/README.md](blank/README.md).
 
 ## Docker
 
 ```sh
-cp ~/Downloads/wftda-statsbook-full-*.xlsx blank/   # into the image
-docker compose up -d                                 # http://localhost:8080
+docker compose up -d     # http://localhost:8080
 ```
 
 The image is a static binary on distroless, running as a non-root user,
-with `/data` as a volume and a health check (`rtfm -health`). Instead of
-building the statsbooks into the image you can mount a folder on `/blank`
-(see `compose.yaml`).
+with `/data` as a volume and a health check (`rtfm -health`). The blank
+statsbooks are in the image; to use others, mount a folder on `/blank` (see
+`compose.yaml`).
 
 ## k3s
 

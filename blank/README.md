@@ -1,13 +1,10 @@
 # Blank statsbooks
 
-Put WFTDA's blank statsbooks (.xlsx) here before building the container
-image, or point `RTFM_BLANK` at a folder that has them. Every `.xlsx` in the
-folder is offered on the site under its file name, so name them after the
-paper size, for example:
+WFTDA's blank statsbooks (IGRF Rev. 20250201), A4 and US Letter. RTFM fills
+these in; every `.xlsx` in this folder is offered on the site under its file
+name. They are built into the container image (`/blank`).
 
-- `wftda-statsbook-full-A4.xlsx`
-- `wftda-statsbook-full-us-letter.xlsx`
-
-Download them from WFTDA's statsbook page (resources.wftda.org), or take
-`blank_statsbook.xlsx` from a CRG scoreboard release. They aren't in this
-repository: they are WFTDA's.
+To use a newer statsbook, replace these files (keep the names, or the paper
+choice on the site changes with them), or point `RTFM_BLANK` at another
+folder. The statsbook is WFTDA's; it comes from WFTDA's statsbook page
+(resources.wftda.org), and the CRG scoreboard ships it too.
