@@ -1,7 +1,7 @@
 # RTFM, the Roller derby Tournament Fixture Maker.
 #
 #   make            build bin/rtfm
-#   make run        run it on :8080 with the blank statsbooks in blank/
+#   make run        run it on :4200 with the blank statsbooks in blank/, logs in logs/
 #   make test       vet and tests
 #   make vendor     refresh vendor/ from ../crg-format (after changing it there)
 #   make image      the container image (docker build)
@@ -19,7 +19,7 @@ all:
 	CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags '$(LDFLAGS)' -o bin/rtfm ./cmd/rtfm
 
 run: all
-	RTFM_BLANK=blank RTFM_DATA=data ./bin/rtfm
+	RTFM_DATA=data ./bin/rtfm
 
 test:
 	go vet -mod=vendor ./cmd/... ./internal/...

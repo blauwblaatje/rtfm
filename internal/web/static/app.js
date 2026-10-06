@@ -1,4 +1,16 @@
 "use strict";
+// Errors in this page go to the server's log for this tournament
+// (logs/<id>.log), so they can be looked at afterwards.
+function report(message, source, line, column, stack) {
+  try {
+    const body = JSON.stringify({ message: String(message), source: source || "", line: line || 0, column: column || 0,
+      stack: String(stack || ""), page: location.pathname, agent: navigator.userAgent });
+    navigator.sendBeacon(`/t/${document.body.dataset.event}/log`, new Blob([body], { type: "application/json" }));
+  } catch (e) {}
+}
+window.addEventListener("error", (e) => report(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack));
+window.addEventListener("unhandledrejection", (e) => report(e.reason && e.reason.message || e.reason, "", 0, 0, e.reason && e.reason.stack));
+
 // The tournament page: the schedule with a team picker for bracket games, a
 // uniform colour per side and a crew per game; downloads per game or all.
 // Choices are kept in this browser (localStorage), per tournament.
@@ -33,7 +45,7 @@ function colorInput(g, side, ch) {
   const list = `c${g.no}_${side}`;
   return `<input class="color" data-game="${g.no}" data-side="${side}" data-k="color" value="${esc(ch.colors[side])}" list="${list}"
       placeholder="colour" aria-label="Game ${g.no} ${side ? "away" : "home"} uniform colour">
-    <datalist id="${list}">${(t ? t.colors : []).map((c) => `<option value="${esc(c)}">`).join("")}</datalist>`;
+    <datalist id="${list}">${(t && t.colors || []).map((c) => `<option value="${esc(c)}">`).join("")}</datalist>`;
 }
 
 function crewSelect(g, ch) {
@@ -84,10 +96,10 @@ function renderInfo() {
   if (!E.blanks.includes(opts.paper)) opts.paper = E.blanks[0] || "";
   $("teams").innerHTML = `<table class="list"><thead><tr><th>#</th><th>Team</th><th>Charter</th><th>Skaters</th><th>Colours</th></tr></thead><tbody>
     ${E.teams.map((t) => `<tr><td>${t.no}</td><td>${esc(t.name)}</td><td>${t.missing ? `<span class="error">${esc(t.missing)}</span>` : esc(t.charter)}</td>
-      <td>${t.skaters || ""}</td><td>${esc(t.colors.join(", "))}</td></tr>`).join("")}</tbody></table>`;
+      <td>${t.skaters || ""}</td><td>${esc((t.colors || []).join(", "))}</td></tr>`).join("")}</tbody></table>`;
   $("crewsBox").hidden = !E.crews.length;
   $("crews").innerHTML = `<table class="list"><thead><tr><th>Crew</th><th>Officials</th><th>Heads</th><th>Games in the infopack</th></tr></thead><tbody>
-    ${E.crews.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.officials}</td><td>${esc(c.heads.join(", "))}</td><td>${esc((c.games || []).join("; "))}</td></tr>`).join("")}</tbody></table>`;
+    ${E.crews.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.officials}</td><td>${esc((c.heads || []).join(", "))}</td><td>${esc((c.games || []).join("; "))}</td></tr>`).join("")}</tbody></table>`;
   $("notesBox").hidden = !E.notes.length;
   $("notes").innerHTML = E.notes.map((n) => `<li>${esc(n)}</li>`).join("");
   const missing = Object.keys(E.missing || {}).length;
@@ -105,7 +117,8 @@ document.addEventListener("change", (e) => {
   if (el.dataset.k === "team") {
     ch.teams[side] = +el.value;
     const t = team(ch.teams[side]);
-    ch.colors[side] = t && t.colors.length ? (side ? t.colors[t.colors.length - 1] : t.colors[0]) : "";
+    const cs = t && t.colors || [];
+    ch.colors[side] = cs.length ? (side ? cs[cs.length - 1] : cs[0]) : "";
   }
   if (el.dataset.k === "color") ch.colors[side] = el.value.trim();
   if (el.dataset.k === "crew") ch.crew = el.value;
@@ -144,5 +157,14 @@ document.addEventListener("click", async (e) => {
 });
 
 load();
-fetch(`/t/${id}/data.json`).then((r) => r.json()).then((d) => { E = d; renderInfo(); render(); })
-  .catch((e) => { $("games").innerHTML = `<p class="error">${esc(e.message)}</p>`; });
+fetch(`/t/${id}/data.json`).then((r) => r.json()).then((d) => {
+  // Lists the server left out are empty lists.
+  for (const k of ["teams", "games", "crews", "notes", "rulesets", "blanks"]) d[k] = d[k] || [];
+  d.missing = d.missing || {};
+  E = d;
+  renderInfo();
+  render();
+}).catch((e) => {
+  report(e.message, "data.json", 0, 0, e.stack);
+  $("games").innerHTML = `<p class="error">Something went wrong showing this tournament: ${esc(e.message)}. It's in the log.</p>`;
+});

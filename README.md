@@ -39,17 +39,26 @@ WebAssembly in here. Files can be uploaded instead of links.
 ## Running it
 
 ```sh
-make run            # bin/rtfm on :8080, blank statsbooks from blank/, data in data/
+make run            # bin/rtfm on :4200, blank statsbooks from blank/, data in data/, logs in logs/
 ```
 
 Settings (flags or environment):
 
 | Flag | Environment | Default | |
 |---|---|---|---|
-| `-addr` | `RTFM_ADDR` | `:8080` | where to listen |
-| `-blank` | `RTFM_BLANK` | | folder with WFTDA's blank statsbooks; each `.xlsx` is offered by file name (A4, US Letter); `blank/` has them |
+| `-addr` | `RTFM_ADDR` | `:4200` | where to listen |
+| `-blank` | `RTFM_BLANK` | `blank` | folder with WFTDA's blank statsbooks; each `.xlsx` is offered by file name (A4, US Letter) |
+| `-logs` | `RTFM_LOGS` | `logs` | log folder, see below |
 | `-data` | `RTFM_DATA` | | folder to keep loaded tournaments in; empty keeps them in memory only |
 | `-keep` | `RTFM_KEEP` | `1440h` | how long a loaded tournament is kept (60 days) |
+
+**Logs.** Everything goes to `logs/rtfm.log` (and standard error); what
+concerns one loaded tournament also to `logs/<id>.log`, the id in its
+address (`/t/<id>`): reading the application, every charter (how long it
+took, or the error), the infopack's crews, every download with the teams,
+colours and crew picked, every request that failed with the answer it got,
+and errors the page ran into in the browser. `rtfm.log` moves to
+`rtfm.log.1` at 10 MB; a tournament's log goes when the tournament does.
 
 WFTDA's blank statsbooks (A4 and US Letter) are in `blank/`, and built into
 the container image: see [blank/README.md](blank/README.md).
@@ -57,11 +66,12 @@ the container image: see [blank/README.md](blank/README.md).
 ## Docker
 
 ```sh
-docker compose up -d     # http://localhost:8080
+docker compose up -d     # http://localhost:4200
 ```
 
 The image is a static binary on distroless, running as a non-root user,
-with `/data` as a volume and a health check (`rtfm -health`). The blank
+with `/data` as a volume (the tournaments, and the logs in `/data/logs`)
+and a health check (`rtfm -health`). The blank
 statsbooks are in the image; to use others, mount a folder on `/blank` (see
 `compose.yaml`).
 

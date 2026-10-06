@@ -14,8 +14,8 @@ FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/rtfm /rtfm
 COPY --from=build --chown=65532:65532 /out/data /data
 COPY --from=build /out/blank /blank
-ENV RTFM_ADDR=:8080 RTFM_BLANK=/blank RTFM_DATA=/data
-EXPOSE 8080
+ENV RTFM_ADDR=:4200 RTFM_BLANK=/blank RTFM_DATA=/data RTFM_LOGS=/data/logs
+EXPOSE 4200
 VOLUME /data
 USER nonroot:nonroot
 HEALTHCHECK --interval=30s --timeout=5s CMD ["/rtfm", "-health"]

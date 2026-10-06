@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"rtfm/internal/fixture"
+	"rtfm/internal/logs"
 )
 
 const testData = "../../.."
@@ -37,7 +38,12 @@ func TestChampionshipsSite(t *testing.T) {
 		t.Skip("no Championships application")
 	}
 	info, _ := os.ReadFile(filepath.Join(testData, "infopacks/champs-2026.xlsx"))
-	site, err := New(Config{Blank: filepath.Join(testData, "statsbooks/template"), Data: t.TempDir(), Fetch: localSheets, Logf: t.Logf})
+	logDir := t.TempDir()
+	lg, err := logs.Open(logDir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	site, err := New(Config{Blank: filepath.Join(testData, "statsbooks/template"), Data: t.TempDir(), Fetch: localSheets, Logs: lg})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +132,24 @@ func TestChampionshipsSite(t *testing.T) {
 	}
 	if books != fixed+1 {
 		t.Errorf("%d statsbooks in the zip, want %d", books, fixed+1)
+	}
+	// The logs: everything in rtfm.log, this tournament's in <id>.log,
+	// errors the page ran into too.
+	id := strings.TrimPrefix(loc, "/t/")
+	r, err = http.Post(ts.URL+loc+"/log", "application/json", strings.NewReader(`{"message":"Cannot read properties of null (reading 'length')","source":"app.js","line":96}`))
+	if err != nil || r.StatusCode != http.StatusNoContent {
+		t.Fatalf("browser log: %v %v", err, r)
+	}
+	own, _ := os.ReadFile(filepath.Join(logDir, id+".log"))
+	for _, want := range []string{"loading: sanctioning application file", "charter read in", "infopack: crew", "loaded \"2026 WFTDA Championships\"",
+		"game 1: STATS-2026-10-15", "game 23 java.json: can't make it", "all.zip: 5 games", "BROWSER ERROR", "reading 'length'"} {
+		if !strings.Contains(string(own), want) {
+			t.Errorf("%s.log has no %q", id, want)
+		}
+	}
+	all, _ := os.ReadFile(filepath.Join(logDir, "rtfm.log"))
+	if !strings.Contains(string(all), "["+id+"] loaded") || !strings.Contains(string(all), "POST /load 303") {
+		t.Errorf("rtfm.log:\n%s", all)
 	}
 	// Kept: a new site on the same folder still has it.
 	site2, _ := New(Config{Data: site.cfg.Data, Fetch: localSheets})

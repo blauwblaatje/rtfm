@@ -1,5 +1,6 @@
 /bin/
 /dist/
 /data/
+/logs/
 # go mod vendor copies crg-format's root folder, including a built scoreboard
 /vendor/crgformat/crgserver

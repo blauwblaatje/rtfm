@@ -90,21 +90,42 @@ type Event struct {
 	Ruleset string                 `json:"ruleset"` // a preset's name
 }
 
+// Options are how Load runs: the tournament's id ("" makes one) and where
+// it logs what it does.
+type Options struct {
+	ID   string
+	Logf func(format string, args ...any)
+}
+
+// NewID is a new tournament id.
+func NewID() string { return prepare.NewID("") }
+
 // Load reads a sanctioning application and its teams' charters (fetched,
 // several at a time), and an infopack if there is one.
-func Load(application, infopack []byte, fetch Fetch) (*Event, error) {
+func Load(application, infopack []byte, fetch Fetch, o Options) (*Event, error) {
+	logf := o.Logf
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	start := time.Now()
 	t, notes, err := tournament.Read(application)
 	if err != nil {
+		logf("sanctioning application: can't read it: %v", err)
 		return nil, fmt.Errorf("reading the sanctioning application: %w", err)
 	}
-	ev := &Event{ID: prepare.NewID(""), Loaded: time.Now().UTC(), T: t, Teams: map[int]*library.Team{},
-		Missing: map[int]string{}, Notes: notes, Ruleset: rulesets.Presets[0].Name}
+	logf("sanctioning application: %q, %d teams, %d games, %d notes", t.Name, len(t.Teams), len(t.Games), len(notes))
+	for _, n := range notes {
+		logf("  note: %s", n)
+	}
+	ev := &Event{ID: cmp.Or(o.ID, NewID()), Loaded: time.Now().UTC(), T: t, Teams: map[int]*library.Team{},
+		Missing: map[int]string{}, Notes: append([]string{}, notes...), Ruleset: rulesets.Presets[0].Name}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 6)
 	for _, tm := range t.Teams {
 		if tm.CharterURL == "" {
 			ev.Missing[tm.No] = "no charter link on the application"
+			logf("team %d %q: no charter link on the application", tm.No, tm.Name)
 			continue
 		}
 		wg.Add(1)
@@ -112,6 +133,7 @@ func Load(application, infopack []byte, fetch Fetch) (*Event, error) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
+			began := time.Now()
 			data, err := fetch(tm.CharterURL)
 			var lt *library.Team
 			var cn []string
@@ -120,10 +142,14 @@ func Load(application, infopack []byte, fetch Fetch) (*Event, error) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
+			took := time.Since(began).Round(time.Millisecond)
 			if err != nil {
 				ev.Missing[tm.No] = err.Error()
+				logf("team %d %q: charter %s: ERROR after %s: %v", tm.No, tm.Name, tm.CharterURL, took, err)
 				return
 			}
+			logf("team %d %q: charter read in %s: %s - %s, %d skaters, colours %v", tm.No, tm.Name, took, lt.League, lt.TeamName,
+				len(lt.Skaters), lt.UniformColors)
 			lt.ID = fmt.Sprintf("team-%d", tm.No)
 			ev.Teams[tm.No] = lt
 			for _, n := range cn {
@@ -135,7 +161,11 @@ func Load(application, infopack []byte, fetch Fetch) (*Event, error) {
 	if len(infopack) > 0 {
 		cs, cn, err := crews.ReadInfopack(infopack)
 		if err != nil {
+			logf("infopack: can't read it: %v", err)
 			return nil, fmt.Errorf("reading the infopack: %w", err)
+		}
+		for _, c := range cs {
+			logf("infopack: crew %q, %d officials, games %v", c.Name, len(c.Officials), c.Games)
 		}
 		for i, c := range cs {
 			c.ID = fmt.Sprintf("crew-%d", i+1)
@@ -144,6 +174,7 @@ func Load(application, infopack []byte, fetch Fetch) (*Event, error) {
 		ev.Notes = append(ev.Notes, cn...)
 	}
 	slices.Sort(ev.Notes)
+	logf("loaded in %s: %d of %d charters, %d crews", time.Since(start).Round(time.Millisecond), len(ev.Teams), len(t.Teams), len(ev.Crews))
 	return ev, nil
 }
 

@@ -14,9 +14,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"rtfm/internal/logs"
 	"rtfm/internal/web"
 )
 
@@ -24,8 +26,9 @@ import (
 var version = "dev"
 
 func main() {
-	addr := flag.String("addr", cmp.Or(os.Getenv("RTFM_ADDR"), ":8080"), "address to listen on (RTFM_ADDR)")
-	blank := flag.String("blank", os.Getenv("RTFM_BLANK"), "folder with WFTDA's blank statsbooks, .xlsx (RTFM_BLANK)")
+	addr := flag.String("addr", cmp.Or(os.Getenv("RTFM_ADDR"), ":4200"), "address to listen on (RTFM_ADDR)")
+	blank := flag.String("blank", cmp.Or(os.Getenv("RTFM_BLANK"), "blank"), "folder with WFTDA's blank statsbooks, .xlsx (RTFM_BLANK)")
+	logDir := flag.String("logs", cmp.Or(os.Getenv("RTFM_LOGS"), "logs"), "log folder: rtfm.log, and <id>.log per tournament (RTFM_LOGS)")
 	data := flag.String("data", os.Getenv("RTFM_DATA"), "folder to keep loaded tournaments in; empty: memory only (RTFM_DATA)")
 	keep := flag.Duration("keep", envDuration("RTFM_KEEP", 60*24*time.Hour), "how long a loaded tournament is kept (RTFM_KEEP)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
@@ -44,7 +47,11 @@ func main() {
 		}
 		return
 	}
-	site, err := web.New(web.Config{Blank: *blank, Data: *data, Keep: *keep})
+	lg, err := logs.Open(*logDir, os.Stderr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	site, err := web.New(web.Config{Blank: *blank, Data: *data, Keep: *keep, Logs: lg})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -70,7 +77,11 @@ func main() {
 		defer cancel()
 		srv.Shutdown(shut)
 	}()
-	log.Printf("rtfm %s: listening on %s, blank statsbooks in %q, data in %q", version, *addr, *blank, *data)
+	blanks, _ := filepath.Glob(filepath.Join(*blank, "*.xlsx"))
+	lg.Printf("", "rtfm %s: listening on %s; %d blank statsbooks in %q, tournaments kept in %q, logs in %q", version, *addr, len(blanks), *blank, *data, *logDir)
+	if len(blanks) == 0 {
+		lg.Printf("", "WARNING: no blank statsbook in %q: statsbook downloads won't work (set -blank or RTFM_BLANK)", *blank)
+	}
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}

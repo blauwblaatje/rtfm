@@ -23,11 +23,12 @@ spec:
           image: rtfm
           imagePullPolicy: IfNotPresent
           ports:
-            - {name: http, containerPort: 8080}
+            - {name: http, containerPort: 4200}
           env:
-            - {name: RTFM_ADDR, value: ":8080"}
+            - {name: RTFM_ADDR, value: ":4200"}
             - {name: RTFM_DATA, value: /data}
             - {name: RTFM_BLANK, value: /blank}
+            - {name: RTFM_LOGS, value: /data/logs} # rtfm.log, and <id>.log per tournament
           volumeMounts:
             - {name: data, mountPath: /data}
             - {name: tmp, mountPath: /tmp}

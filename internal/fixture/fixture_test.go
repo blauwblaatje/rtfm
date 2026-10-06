@@ -26,7 +26,7 @@ func champs(t *testing.T) *Event {
 		t.Skip("no Championships application in ../../../sanctioning")
 	}
 	info, _ := os.ReadFile("../../../infopacks/champs-2026.xlsx")
-	ev, err := Load(app, info, localSheets)
+	ev, err := Load(app, info, localSheets, Options{Logf: t.Logf})
 	if err != nil {
 		t.Fatal(err)
 	}

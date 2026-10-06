@@ -1,10 +1,11 @@
-# docker compose up -d   then open http://localhost:8080
+# docker compose up -d   then open http://localhost:4200
+# Logs: in the rtfm-data volume, logs/ (rtfm.log, and <id>.log per tournament).
 services:
   rtfm:
     build: .
     image: rtfm:latest
     ports:
-      - "8080:8080"
+      - "4200:4200"
     volumes:
       - rtfm-data:/data
       # Or the blank statsbooks from a folder here instead of in the image:

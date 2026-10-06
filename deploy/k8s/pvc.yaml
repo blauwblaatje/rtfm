@@ -1,4 +1,4 @@
-# Loaded tournaments, kept for RTFM_KEEP (60 days by default).
+# Loaded tournaments, kept for RTFM_KEEP (60 days by default), and the logs.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

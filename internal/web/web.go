@@ -5,6 +5,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -12,7 +13,6 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +29,7 @@ import (
 	"crgformat/rulesets"
 
 	"rtfm/internal/fixture"
+	"rtfm/internal/logs"
 )
 
 //go:embed static templates
@@ -46,7 +47,8 @@ type Config struct {
 	Keep time.Duration
 	// Fetch downloads Google Sheets (fixture.FetchSheet, or a test's).
 	Fetch fixture.Fetch
-	Logf  func(format string, args ...any)
+	// Logs: everything to logs/rtfm.log, and per tournament to logs/<id>.log.
+	Logs *logs.Logs
 }
 
 // Site serves RTFM.
@@ -68,8 +70,8 @@ func New(cfg Config) (*Site, error) {
 	if cfg.Fetch == nil {
 		cfg.Fetch = fixture.FetchSheet
 	}
-	if cfg.Logf == nil {
-		cfg.Logf = log.Printf
+	if cfg.Logs == nil {
+		cfg.Logs, _ = logs.Open("", os.Stderr)
 	}
 	if cfg.Keep == 0 {
 		cfg.Keep = 60 * 24 * time.Hour
@@ -99,7 +101,79 @@ func (s *Site) Handler() http.Handler {
 	mux.HandleFunc("GET /t/{id}/data.json", s.withEvent(s.data))
 	mux.HandleFunc("GET /t/{id}/game/{no}/{file}", s.withEvent(s.gameFile))
 	mux.HandleFunc("POST /t/{id}/all.zip", s.withEvent(s.all))
-	return securityHeaders(mux)
+	mux.HandleFunc("POST /log", s.clientLog)
+	mux.HandleFunc("POST /t/{id}/log", s.clientLog)
+	return s.logRequests(securityHeaders(mux))
+}
+
+// logf logs for a tournament ("" for none).
+func (s *Site) logf(id, format string, args ...any) { s.cfg.Logs.Printf(id, format, args...) }
+
+// logRequests logs every request with its answer and time; a failed one
+// with what it answered, and one about a tournament in its log too.
+func (s *Site) logRequests(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &recorder{ResponseWriter: w, status: http.StatusOK}
+		h.ServeHTTP(rec, r)
+		if r.URL.Path == "/healthz" || strings.HasPrefix(r.URL.Path, "/static/") && rec.status < 400 {
+			return
+		}
+		id := ""
+		if m := pathID.FindStringSubmatch(r.URL.Path); m != nil {
+			id = m[1]
+		}
+		msg := fmt.Sprintf("%s %s %d %s %dB", r.Method, r.URL.RequestURI(), rec.status, time.Since(start).Round(time.Millisecond), rec.size)
+		if rec.status >= 400 && rec.errBody.Len() > 0 {
+			msg += ": " + strings.TrimSpace(rec.errBody.String())
+		}
+		if loc := rec.Header().Get("Location"); rec.status == http.StatusSeeOther && strings.Contains(loc, "error=") {
+			if u, err := url.Parse(loc); err == nil {
+				msg += " -> error: " + u.Query().Get("error")
+			}
+		}
+		s.logf(id, "%s", msg)
+	})
+}
+
+var pathID = regexp.MustCompile(`^/t/([0-9a-f]{10})(?:/|$)`)
+
+type recorder struct {
+	http.ResponseWriter
+	status  int
+	size    int
+	errBody bytes.Buffer
+}
+
+func (r *recorder) WriteHeader(code int) { r.status = code; r.ResponseWriter.WriteHeader(code) }
+func (r *recorder) Write(b []byte) (int, error) {
+	if r.status >= 400 && r.errBody.Len() < 500 {
+		r.errBody.Write(b[:min(len(b), 500-r.errBody.Len())])
+	}
+	r.size += len(b)
+	return r.ResponseWriter.Write(b)
+}
+
+// clientLog takes an error the page ran into in the browser, so it is in
+// the logs too.
+func (s *Site) clientLog(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
+	var e struct {
+		Message, Source, Stack, Page, Agent string
+		Line, Column                        int
+	}
+	if json.Unmarshal(body, &e) != nil {
+		http.Error(w, "bad log", http.StatusBadRequest)
+		return
+	}
+	id := r.PathValue("id")
+	if !idRe.MatchString(id) {
+		id = ""
+	}
+	clean := func(s string) string { return strings.ReplaceAll(strings.ReplaceAll(s, "\r", " "), "\n", " | ") }
+	s.logf(id, "BROWSER ERROR on %s: %s (%s:%d:%d) stack: %s agent: %s", clean(e.Page), clean(e.Message), clean(e.Source),
+		e.Line, e.Column, clean(e.Stack), clean(e.Agent))
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func securityHeaders(h http.Handler) http.Handler {
@@ -120,7 +194,7 @@ func (s *Site) home(w http.ResponseWriter, r *http.Request) {
 func (s *Site) render(w http.ResponseWriter, name string, data any) {
 	var buf bytes.Buffer
 	if err := s.tmpl.ExecuteTemplate(&buf, name, data); err != nil {
-		s.cfg.Logf("rtfm: %s: %v", name, err)
+		s.logf("", "page %s: %v", name, err)
 		http.Error(w, "page error", http.StatusInternalServerError)
 		return
 	}
@@ -141,6 +215,7 @@ func (s *Site) load(w http.ResponseWriter, r *http.Request) {
 	}
 	app, err := s.input(r, "sanction")
 	if err != nil {
+		s.logf("", "loading: sanctioning application: %v", err)
 		fail(fmt.Errorf("sanctioning application: %w", err))
 		return
 	}
@@ -150,11 +225,22 @@ func (s *Site) load(w http.ResponseWriter, r *http.Request) {
 	}
 	info, err := s.input(r, "infopack")
 	if err != nil {
+		s.logf("", "loading: infopack: %v", err)
 		fail(fmt.Errorf("infopack: %w", err))
 		return
 	}
-	ev, err := fixture.Load(app, info, s.cfg.Fetch)
+	id := fixture.NewID()
+	from := func(field string) string {
+		if f, h, err := r.FormFile(field + "File"); err == nil {
+			f.Close()
+			return fmt.Sprintf("file %q (%d bytes)", h.Filename, h.Size)
+		}
+		return strings.TrimSpace(r.FormValue(field))
+	}
+	s.logf(id, "loading: sanctioning application %s, infopack %s", from("sanction"), cmp.Or(from("infopack"), "none"))
+	ev, err := fixture.Load(app, info, s.cfg.Fetch, fixture.Options{ID: id, Logf: s.cfg.Logs.For(id)})
 	if err != nil {
+		s.logf(id, "loading FAILED: %v", err)
 		fail(err)
 		return
 	}
@@ -162,7 +248,7 @@ func (s *Site) load(w http.ResponseWriter, r *http.Request) {
 	s.events[ev.ID] = ev
 	s.mu.Unlock()
 	s.save(ev)
-	s.cfg.Logf("rtfm: loaded %q (%d teams, %d games, %d crews) as %s", ev.T.Name, len(ev.Teams), len(ev.T.Games), len(ev.Crews), ev.ID)
+	s.logf(ev.ID, "loaded %q: %d teams, %d games, %d crews", ev.T.Name, len(ev.Teams), len(ev.T.Games), len(ev.Crews))
 	http.Redirect(w, r, "/t/"+ev.ID, http.StatusSeeOther)
 }
 
@@ -256,8 +342,11 @@ type CrewView struct {
 func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	t := ev.T
 	v := EventView{ID: ev.ID, Name: t.Name, Dates: t.Dates, Venue: strings.Trim(strings.Join([]string{t.Venue.Name, t.Venue.City, t.Venue.Country}, ", "), ", "),
-		Host: t.HostLeague, Notes: ev.Notes, Java: fixture.JavaVersion, Loaded: ev.Loaded, Blanks: s.blanks(), Missing: ev.Missing,
-		Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}}
+		Host: t.HostLeague, Notes: append([]string{}, ev.Notes...), Java: fixture.JavaVersion, Loaded: ev.Loaded, Blanks: s.blanks(),
+		Missing: ev.Missing, Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}, Rulesets: []string{}}
+	if v.Missing == nil {
+		v.Missing = map[int]string{}
+	}
 	for _, p := range rulesets.Presets {
 		v.Rulesets = append(v.Rulesets, p.Name)
 	}
@@ -275,7 +364,7 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 			Sides: g.Sides, Fixed: g.Fixed, Default: g.Default})
 	}
 	for _, c := range ev.Crews {
-		cv := CrewView{ID: c.ID, Name: c.Name, Officials: len(c.Officials), Games: c.Games, Heads: []string{}}
+		cv := CrewView{ID: c.ID, Name: c.Name, Officials: len(c.Officials), Games: append([]string{}, c.Games...), Heads: []string{}}
 		for _, o := range c.Officials {
 			if o.Head {
 				cv.Heads = append(cv.Heads, o.Name+" ("+o.Role+")")
@@ -315,8 +404,10 @@ func (s *Site) gameFile(w http.ResponseWriter, r *http.Request, ev *fixture.Even
 		return
 	}
 	q := r.URL.Query()
-	sum, err := s.build(ev, no, choice(q), q.Get("rules"))
+	ch := choice(q)
+	sum, err := s.build(ev, no, ch, q.Get("rules"))
 	if err != nil {
+		s.logf(ev.ID, "game %d %s: can't make it (teams %v, colours %q, crew %q): %v", no, file, ch.Teams, ch.Colors, ch.Crew, err)
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
@@ -329,6 +420,7 @@ func (s *Site) gameFile(w http.ResponseWriter, r *http.Request, ev *fixture.Even
 			data, err = fixture.Statsbook(sum, blank)
 		}
 		if err != nil {
+			s.logf(ev.ID, "game %d statsbook (%q): %v", no, q.Get("paper"), err)
 			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}
@@ -342,6 +434,8 @@ func (s *Site) gameFile(w http.ResponseWriter, r *http.Request, ev *fixture.Even
 		name = "crg-game-" + strings.TrimPrefix(name, "STATS-") + ".json"
 		w.Header().Set("Content-Type", "application/json")
 	}
+	s.logf(ev.ID, "game %d: %s (teams %v, colours %q, crew %q, %d skaters, %d officials)", no, name, ch.Teams, ch.Colors, ch.Crew,
+		len(sum.Teams[0].Skaters)+len(sum.Teams[1].Skaters), len(sum.Officials))
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
 	w.Write(data)
 }
@@ -353,6 +447,7 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	choices := map[string]fixture.Choice{}
 	if err := json.Unmarshal([]byte(r.FormValue("choices")), &choices); err != nil {
+		s.logf(ev.ID, "all.zip: choices %q: %v", r.FormValue("choices"), err)
 		http.Error(w, "choices: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -408,6 +503,7 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	s.logf(ev.ID, "all.zip: %d games, %d files; left out: %s", len(sums), len(files), cmp.Or(strings.Join(skipped, "; "), "nothing"))
 	w.Header().Set("Content-Type", "application/zip")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fixture.Slug(ev.T.Name)+".zip"))
 	w.Write(data)
@@ -423,7 +519,7 @@ func (s *Site) build(ev *fixture.Event, no int, ch fixture.Choice, rules string)
 
 // blanks are the blank statsbooks there are, by name.
 func (s *Site) blanks() []string {
-	var out []string
+	out := []string{}
 	if s.cfg.Blank == "" {
 		return out
 	}
@@ -485,7 +581,7 @@ func (s *Site) save(ev *fixture.Event) {
 		err = os.WriteFile(filepath.Join(s.cfg.Data, ev.ID+".json"), data, 0o644)
 	}
 	if err != nil {
-		s.cfg.Logf("rtfm: keeping %s: %v", ev.ID, err)
+		s.logf(ev.ID, "keeping it on disk: %v", err)
 	}
 }
 
@@ -495,6 +591,7 @@ func (s *Site) Clean() {
 	for id, ev := range s.events {
 		if time.Since(ev.Loaded) > s.cfg.Keep {
 			delete(s.events, id)
+			s.cfg.Logs.Remove(id)
 		}
 	}
 	s.mu.Unlock()
