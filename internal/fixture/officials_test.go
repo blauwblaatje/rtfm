@@ -43,6 +43,28 @@ func TestParseRoster(t *testing.T) {
 	if CertFor("Scorekeeper", []string{"Skating Level 1"}) != "Skating Level 1" {
 		t.Error("an official without a fitting certification")
 	}
+	// Always one, the highest: the IGRF's field has room for one.
+	for _, c := range []struct {
+		role  string
+		certs []string
+		want  string
+	}{
+		{"Jam Timer", []string{"Skating Level 3", "Non-Skating Recognized", "Non-Skating Level 1"}, "Non-Skating Level 1"},
+		{"Jammer Referee", []string{"Skating Recognized", "Skating Level 1"}, "Skating Level 1"},
+		{"Scorekeeper", []string{"Skating Recognized", "Skating Level 2"}, "Skating Level 2"},
+		{"Scorekeeper", nil, ""},
+	} {
+		if got := CertFor(c.role, c.certs); got != c.want {
+			t.Errorf("%s %v: %q, want %q", c.role, c.certs, got, c.want)
+		}
+	}
+	for _, e := range r {
+		for _, role := range []string{"Jam Timer", "Head Referee"} {
+			if v := CertFor(role, e.Certs); strings.Contains(v, ",") {
+				t.Errorf("%s as %s: %q", e.Name, role, v)
+			}
+		}
+	}
 }
 
 func TestNameKey(t *testing.T) {

@@ -225,21 +225,33 @@ func fromRows(rows [][]string) (Roster, error) {
 var skatingRoles = map[string]bool{"Head Referee": true, "Inside Pack Referee": true, "Jammer Referee": true,
 	"Outside Pack Referee": true, "Referee Alternate": true}
 
-// CertFor is the certification to write on the IGRF for an official in a
-// role: what fits the role (Skating for referees, Non-Skating for the
-// rest), else everything they have.
+// CertFor is the one certification to write on the IGRF for an official in
+// a role (the field has room for one): the highest that fits the role
+// (Skating for referees, Non-Skating for the rest), else the highest they
+// have. Higher is Level 3 over 2 over 1 over Recognized.
 func CertFor(role string, certs []string) string {
-	var fit []string
-	for _, c := range certs {
-		skating := strings.HasPrefix(c, "Skating")
-		if skating == skatingRoles[role] {
-			fit = append(fit, c)
+	best, bestRank := "", -1
+	for pass := 0; pass < 2 && best == ""; pass++ {
+		for _, c := range certs {
+			skating := strings.HasPrefix(c, "Skating")
+			if pass == 0 && skating != skatingRoles[role] {
+				continue
+			}
+			if r := certRank(c); r > bestRank {
+				best, bestRank = c, r
+			}
 		}
 	}
-	if len(fit) == 0 {
-		fit = certs
+	return best
+}
+
+func certRank(c string) int {
+	for i, l := range []string{"Recognized", "Level 1", "Level 2", "Level 3"} {
+		if strings.HasSuffix(c, l) {
+			return i
+		}
 	}
-	return strings.Join(fit, ", ")
+	return -1
 }
 
 // FillReport says what Fill did.

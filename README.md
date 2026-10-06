@@ -16,9 +16,10 @@ makes each game as it is before the first whistle:
 name, pronouns, league affiliation, certification and head mark, and new
 officials and crews. League, pronouns and certification can be filled in
 from [WFTDA's roster of certified officials](https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/)
-(matched by name, ignoring case, accents and punctuation; Non-Skating levels
-for NSO positions, Skating levels for referees; a name that's on the roster
-twice is left for you), or from a list of your own: an .xlsx or .csv with a
+(matched by name, ignoring case, accents and punctuation; one certification
+per official, as the IGRF's field has room for one: the highest Non-Skating
+level for an NSO position, the highest Skating level for a referee, else the
+highest they have; a name that's on the roster twice is left for you), or from a list of your own: an .xlsx or .csv with a
 name column and league and/or certification columns, found by their
 headings. What's filled in already stays, unless you tick "replace". WFTDA's
 site sometimes turns automatic requests away: then save the roster page in
