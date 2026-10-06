@@ -257,6 +257,27 @@ func MatchCrew(all []*crews.Crew, teams [2][]string) *crews.Crew {
 	return nil
 }
 
+// MatchCrewByNumber is the crew an infopack assigned to game number no
+// ("Game 3", "G3", "GAME 3 (Semifinal)"): the game's own crew (one named
+// after it, or with only that game) before a crew that does several.
+func MatchCrewByNumber(all []*crews.Crew, no int) *crews.Crew {
+	var several *crews.Crew
+	for _, c := range all {
+		for _, g := range c.Games {
+			if no <= 0 || crews.GameNumber(g) != no {
+				continue
+			}
+			if len(c.Games) == 1 || crews.GameNumber(c.Name) == no {
+				return c
+			}
+			if several == nil {
+				several = c
+			}
+		}
+	}
+	return several
+}
+
 // Plain is a name in lower case without spaces and punctuation.
 func Plain(s string) string {
 	return strings.Map(func(r rune) rune {

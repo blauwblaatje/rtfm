@@ -27,7 +27,8 @@ a browser and upload it. The edits are kept with the tournament, so every
 download, and everyone who opens it, gets them.
 
 Games whose teams depend on results ("Winner Game 3") get a team picker;
-every game gets a crew picker, set to the crew the infopack assigned. The
+every game gets a crew picker, set to the crew the infopack assigned (by
+the teams' names, "WG1" for "Winner Game 1", or the game's number). The
 choices are kept in the browser. *Download all* gives a zip with a statsbook
 per game whose teams are known, and one CRG file with all of them.
 
@@ -40,7 +41,7 @@ The reading is the CRG Go rewrite's (`../crg-format`, vendored in
 |---|---|---|
 | Sanctioning application | `tournament` | name, dates, venue, host league, teams with charter links, the schedule (date, time, track, home/away, colours, "Winner/Loser Game N") |
 | Charters | `library` | league, team, uniform colours; per skater number, name, pronouns, pronunciation, WUID. **Never legal names.** |
-| Infopack | `crews` | the crews: officials by position, heads, the games each crew is assigned. **Never contact details.** |
+| Infopack | `crews` | the crews: officials by position, heads, pronouns, league and level where it has them, the games each crew is assigned. Infopacks have no standard layout: crew lists, crews side by side, a grid per game, assignments in the schedule; checked against nine real ones. **Never contact details.** |
 | WFTDA's roster of certified officials | `internal/fixture` | per official league, pronouns, certifications |
 | A list of officials (.xlsx, .csv) | `internal/fixture` | name, league, certification, pronouns; **never a legal-name column** |
 | The game | `prepare` | its first events, as the scoreboard makes them |

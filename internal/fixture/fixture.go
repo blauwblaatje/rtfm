@@ -212,7 +212,7 @@ func (ev *Event) Games() []GameView {
 			}
 			v.Default.Colors[i] = ev.color(v.Default.Teams[i], slot.Color, i)
 		}
-		if c := ev.crewFor(v.Default.Teams); c != nil {
+		if c := ev.crewFor(g, v.Default.Teams); c != nil {
 			v.Default.Crew = c.ID
 		}
 		out = append(out, v)
@@ -280,23 +280,71 @@ func (ev *Event) MarshalJSON() ([]byte, error) {
 	return json.Marshal((*plain)(ev))
 }
 
-// crewFor is the crew the infopack assigned to the game between two teams.
-func (ev *Event) crewFor(teams [2]int) *crews.Crew {
-	if teams[0] == 0 || teams[1] == 0 {
-		return nil
-	}
+// crewFor is the crew the infopack assigned to a game: by its teams'
+// names, a bracket side by how infopacks write it ("Winner Game 1": "WG1",
+// "Winner G1"); else by its number ("Game 3", "G3").
+func (ev *Event) crewFor(g tournament.Game, teams [2]int) *crews.Crew {
 	var names [2][]string
-	for i, no := range teams {
-		if tm := ev.T.TeamByNo(no); tm != nil {
-			names[i] = append(names[i], tm.Name)
-		}
-		if lt := ev.Teams[no]; lt != nil {
-			names[i] = append(names[i], lt.Name, lt.League, lt.TeamName)
+	for i, slot := range []tournament.Slot{g.Home, g.Away} {
+		if no := teams[i]; no > 0 {
+			if tm := ev.T.TeamByNo(no); tm != nil {
+				names[i] = append(names[i], tm.Name)
+			}
+			if lt := ev.Teams[no]; lt != nil {
+				names[i] = append(names[i], lt.Name, lt.League, lt.TeamName)
+			}
+		} else if slot.From != nil {
+			names[i] = bracketNames(slot.From.Winner, slot.From.Game)
 		}
 	}
 	ev.mu.RLock()
 	defer ev.mu.RUnlock()
-	return prepare.MatchCrew(ev.Crews, names)
+	if len(names[0]) > 0 && len(names[1]) > 0 {
+		for _, c := range ev.Crews {
+			for _, label := range c.Games {
+				if mentionsAny(label, names[0]) && mentionsAny(label, names[1]) {
+					return c
+				}
+			}
+		}
+	}
+	return prepare.MatchCrewByNumber(ev.Crews, g.No)
+}
+
+// bracketNames are how infopacks write "Winner Game 1": "WG1", "W G1",
+// "Winner G1", "Winner Game 1".
+func bracketNames(winner bool, game int) []string {
+	w, word := "L", "Loser"
+	if winner {
+		w, word = "W", "Winner"
+	}
+	n := strconv.Itoa(game)
+	return []string{w + "G" + n, word + " G" + n, word + " Game " + n, word + " of Game " + n, word + " " + n}
+}
+
+// mentionsAny says whether a game label names one of these (compared
+// without spaces and punctuation; "WG1" isn't in "WG12").
+func mentionsAny(label string, names []string) bool {
+	l := prepare.Plain(label)
+	for _, n := range names {
+		p := prepare.Plain(n)
+		if p == "" {
+			continue
+		}
+		for i := strings.Index(l, p); i >= 0; {
+			end := i + len(p)
+			lastDigit := p[len(p)-1] >= '0' && p[len(p)-1] <= '9'
+			if !lastDigit || end >= len(l) || l[end] < '0' || l[end] > '9' {
+				return true
+			}
+			next := strings.Index(l[i+1:], p)
+			if next < 0 {
+				break
+			}
+			i += 1 + next
+		}
+	}
+	return false
 }
 
 // Crew is a crew by ID.

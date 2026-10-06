@@ -156,3 +156,15 @@ func TestChampsCrewsFromRoster(t *testing.T) {
 		t.Error("the IGRF has no league and certification for Connie (Head NSO)")
 	}
 }
+
+func TestMentionsAny(t *testing.T) {
+	if !mentionsAny("Thursday: Roller Derby Toulouse - Nothing Toulouse v WG1", bracketNames(true, 1)) {
+		t.Error("WG1")
+	}
+	if mentionsAny("Thursday: Roller Derby Toulouse v WG12", bracketNames(true, 1)) {
+		t.Error("WG1 in WG12")
+	}
+	if !mentionsAny("Saturday: G9 Loser G5 v Loser G6", bracketNames(false, 6)) {
+		t.Error("Loser G6")
+	}
+}
