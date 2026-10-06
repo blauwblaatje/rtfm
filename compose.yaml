@@ -1,0 +1,14 @@
+# docker compose up -d   then open http://localhost:8080
+services:
+  rtfm:
+    build: .
+    image: rtfm:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - rtfm-data:/data
+      # Or the blank statsbooks from a folder here instead of in the image:
+      # - ./blank:/blank:ro
+    restart: unless-stopped
+volumes:
+  rtfm-data:

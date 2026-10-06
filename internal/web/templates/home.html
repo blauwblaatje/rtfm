@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTFM · Roller derby Tournament Fixture Maker</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main class="narrow">
+  <header class="brand">
+    <h1><abbr title="Roller derby Tournament Fixture Maker">RTFM</abbr></h1>
+    <p class="tag"><b>R</b>oller derby <b>T</b>ournament <b>F</b>ixture <b>M</b>aker</p>
+  </header>
+  <p>Paste a WFTDA tournament sanctioning application. RTFM reads the schedule and every team's charter, and makes each
+    game as it is before the first whistle: a <b>statsbook</b> with the IGRF filled in, and a game file for the
+    <b>CRG scoreboard</b>. Add the officials' infopack and the crews come along.</p>
+  {{with .Error}}<p class="error" role="alert">{{.}}</p>{{end}}
+  <form method="post" action="/load" enctype="multipart/form-data" id="loadForm">
+    <fieldset>
+      <legend>Sanctioning application</legend>
+      <label>Google Sheets link
+        <input type="url" name="sanction" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+      <label class="or">or the file (.xlsx) <input type="file" name="sanctionFile" accept=".xlsx"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Infopack <span class="muted">(optional)</span></legend>
+      <label>Google Sheets link
+        <input type="url" name="infopack" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+      <label class="or">or the file (.xlsx) <input type="file" name="infopackFile" accept=".xlsx"></label>
+    </fieldset>
+    <button type="submit" id="go">Make the fixtures</button>
+    <p class="muted small" id="wait" hidden>Reading the application and downloading every charter: this takes a few seconds…</p>
+  </form>
+  <details class="small">
+    <summary>What does it need?</summary>
+    <ul>
+      <li>The sheets must be shared so anyone with the link can view them. RTFM downloads them as spreadsheets; it never
+        asks Google for anything else.</li>
+      <li>The application's Basic Info tab links each team's charter; the Schedule tab lists the games. Games that say
+        "Winner Game 3" get a team picker.</li>
+      <li>From charters RTFM takes skater numbers, names, pronouns, pronunciation and WUID, never legal names. From
+        infopacks it takes the crews, never contact details.</li>
+    </ul>
+  </details>
+</main>
+<footer>RTFM · GPL-3 · uses the <a href="https://github.com/rollerderby/scoreboard">CRG scoreboard</a>'s formats</footer>
+<script src="/static/home.js"></script>
+</body>
+</html>

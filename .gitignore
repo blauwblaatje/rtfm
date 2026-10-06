@@ -1,0 +1,7 @@
+/bin/
+/dist/
+/data/
+# WFTDA's blank statsbooks: put them here yourself (see blank/README.md)
+/blank/*.xlsx
+# go mod vendor copies crg-format's root folder, including a built scoreboard
+/vendor/crgformat/crgserver

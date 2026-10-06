@@ -1,0 +1,29 @@
+This program includes pages of the CRG ScoreBoard, version 2027.1
+(https://github.com/rollerderby/scoreboard), GPL-3, unchanged:
+
+  server/web/views/overlay, views/wb, views/roster (the video overlay, the
+  penalty whiteboard and the roster display), server/web/components/plt-input,
+  components/roster-tab, json/core.js, json/WS.js, javascript/, styles/ and
+  favicon.ico.
+
+They run on the Java scoreboard's WebSocket protocol (package javaws).
+
+Also from the CRG ScoreBoard 2027.1: the penalty code definitions
+server/penalties/*.json (config/penalties), for the penalty codes' names.
+
+With them come these libraries, under their own licences:
+
+  server/web/external/jquery            jQuery 3.7.1, MIT licence (https://jquery.org/license)
+  server/web/external/jquery-ui         jQuery UI, MIT licence (LICENSE.txt there)
+  server/web/external/jquery-fileupload jQuery File Upload, MIT licence (header of the file)
+  server/web/external/jquery-qrcode     jquery.qrcode, MIT licence (MIT-LICENSE.txt there)
+  server/web/fonts/inter                Inter Display by Rasmus Andersson,
+                                        SIL Open Font License 1.1 (https://rsms.me/inter/)
+  server/web/fonts/LiberationSans-*     Liberation Sans (Red Hat), GPL-2 with the font
+                                        exception (LiberationSans-License.txt there), for
+                                        the Liberation theme, server/web/themes/liberation.css
+  server/web/fonts/antonio              Antonio (The Antonio Project Authors), SIL Open
+                                        Font License 1.1 (OFL.txt there), for the LCARS theme
+
+And the device names (server/humanid.go): the word lists of
+utils/HumanIdGenerator.java.

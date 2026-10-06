@@ -1,0 +1,17 @@
+# k3s ships Traefik as its ingress controller. Change the host; for HTTPS add
+# a tls section (cert-manager, or Traefik's own certificate resolver).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rtfm
+spec:
+  rules:
+    - host: rtfm.example.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rtfm
+                port: {name: http}

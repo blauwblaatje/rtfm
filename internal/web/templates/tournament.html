@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Event.T.Name}} · RTFM</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-event="{{.Event.ID}}">
+<main>
+  <header class="top">
+    <a href="/" class="logo" title="Roller derby Tournament Fixture Maker">RTFM</a>
+    <div>
+      <h1 id="name">{{.Event.T.Name}}</h1>
+      <p class="muted" id="meta"></p>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="For every download">
+    <label>Ruleset <select id="rules"></select></label>
+    <label>Statsbook paper <select id="paper"></select></label>
+    <form method="post" id="allForm">
+      <input type="hidden" name="choices" id="allChoices">
+      <input type="hidden" name="rules" id="allRules">
+      <input type="hidden" name="paper" id="allPaper">
+      <button type="submit" class="primary">Download all (zip)</button>
+    </form>
+    <button type="button" id="reset" class="quiet">Back to the defaults</button>
+  </section>
+  <p class="muted small">Pick the teams of bracket games and each game's crew; RTFM remembers them in this browser. The
+    zip holds a statsbook per game whose teams are known, and one file with all of them for the CRG scoreboard
+    {{.Java}} (Settings, Data Management, Import JSON).</p>
+
+  <section id="games" aria-label="Games"><p class="muted">Loading…</p></section>
+
+  <details id="teamsBox"><summary>Teams and charters</summary><div id="teams"></div></details>
+  <details id="crewsBox"><summary>Crews from the infopack</summary><div id="crews"></div></details>
+  <details id="notesBox"><summary>Notes from reading the sheets</summary><ul id="notes" class="small"></ul></details>
+</main>
+<footer>RTFM · Roller derby Tournament Fixture Maker</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

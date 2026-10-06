@@ -1,0 +1,73 @@
+/* RTFM: plain, readable, light and dark. */
+:root {
+  --bg: #fcfcfb; --surface: #f2f1ee; --line: #dddcd7; --ink: #1d1d1b; --ink-2: #55534d; --muted: #77756e;
+  --accent: #2a78d6; --accent-ink: #fff; --error: #b3261e; --waiting: #f7f3e6;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1a1a19; --surface: #242423; --line: #3a3a37; --ink: #ecebe8; --ink-2: #c4c2bc; --muted: #9a9890;
+    --accent: #3987e5; --accent-ink: #fff; --error: #ef8a83; --waiting: #2a2720; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+main.narrow { max-width: 720px; }
+footer { color: var(--muted); font-size: 0.85em; text-align: center; padding: 24px 16px; }
+a { color: var(--accent); }
+h1 { margin: 0; font-size: 1.6em; line-height: 1.2; }
+h2 { font-size: 1.1em; margin: 24px 0 8px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.88em; }
+.error { color: var(--error); }
+p.error { border: 1px solid var(--error); border-radius: 8px; padding: 8px 12px; }
+
+.brand { text-align: center; margin: 24px 0 16px; }
+.brand h1 { font-size: 3em; letter-spacing: 0.08em; }
+.brand abbr { text-decoration: none; }
+.brand .tag { margin: 0; color: var(--ink-2); }
+.brand .tag b { color: var(--accent); }
+
+fieldset { border: 1px solid var(--line); border-radius: 10px; margin: 0 0 14px; padding: 10px 14px 12px; }
+legend { font-weight: 600; padding: 0 4px; }
+label { display: block; margin: 6px 0; color: var(--ink-2); }
+label.or { font-size: 0.9em; }
+input, select, button, .button { font: inherit; color: var(--ink); }
+input[type=url], input[type=text], input:not([type]), select { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); }
+input[type=file] { color: var(--ink-2); }
+button, .button { display: inline-block; padding: 7px 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); cursor: pointer; text-decoration: none; white-space: nowrap; }
+button.primary, #go { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+button.quiet { background: none; }
+button:disabled { opacity: 0.6; cursor: progress; }
+.button[aria-disabled=true] { opacity: 0.45; cursor: not-allowed; }
+details { margin: 18px 0; }
+summary { cursor: pointer; font-weight: 600; }
+
+.top { display: flex; gap: 14px; align-items: center; margin-bottom: 12px; }
+.top .logo { background: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 8px 10px; border-radius: 10px; text-decoration: none; letter-spacing: 0.05em; }
+.top p { margin: 2px 0 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; background: var(--surface); border-radius: 10px; padding: 10px 14px; }
+.controls label { margin: 0; }
+.controls select { width: auto; }
+.controls form { margin: 0; }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 0.85em; padding: 6px; border-bottom: 1px solid var(--line); }
+td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.games td.no { font-weight: 700; width: 3.5em; }
+table.games td.vs { color: var(--muted); padding-top: 12px; }
+table.games select { min-width: 12em; }
+table.games input.color { margin-top: 4px; width: 9em; padding: 3px 6px; font-size: 0.9em; }
+table.games .team { display: inline-block; padding: 7px 0; font-weight: 600; }
+table.games td.dl { white-space: nowrap; }
+table.games td.dl .button { padding: 5px 10px; font-size: 0.9em; }
+table.games tr.waiting td { background: var(--waiting); }
+table.games tr.note td { border-bottom: 0; padding-top: 0; }
+table.list td { font-size: 0.92em; }
+@media (max-width: 700px) {
+  table.games, table.games tbody, table.games tr, table.games td { display: block; width: 100%; }
+  table.games thead { display: none; }
+  table.games tr { border-bottom: 1px solid var(--line); padding: 6px 0; }
+  table.games td { border: 0; padding: 3px 0; }
+  table.games td.vs { padding: 0; }
+}

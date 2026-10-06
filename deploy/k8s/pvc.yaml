@@ -1,0 +1,10 @@
+# Loaded tournaments, kept for RTFM_KEEP (60 days by default).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rtfm-data
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi

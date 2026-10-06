@@ -1,0 +1,2635 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rollerderby/scoreboard/schema/events-1.json",
+  "title": "CRG game event (one line of <game>.events.jsonl)",
+  "description": "Draft v1. See README.md for the meaning of each event.",
+  "type": "object",
+  "properties": {
+    "v": {
+      "const": 1
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "t": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "type": {
+      "type": "string"
+    },
+    "pc": {
+      "$ref": "#/$defs/ms"
+    },
+    "jc": {
+      "$ref": "#/$defs/ms"
+    },
+    "src": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "official": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": [
+    "v",
+    "seq",
+    "t",
+    "type"
+  ],
+  "oneOf": [
+    {
+      "title": "GameCreated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "game",
+        "ruleset"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "GameCreated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "game": {
+          "$ref": "#/$defs/id"
+        },
+        "ruleset": {
+          "$ref": "#/$defs/ruleset"
+        },
+        "name": {
+          "type": "string"
+        },
+        "info": {
+          "$ref": "#/$defs/info"
+        },
+        "timezone": {
+          "$ref": "#/$defs/timezone"
+        },
+        "gameType": {
+          "$ref": "#/$defs/gameType"
+        },
+        "cueMode": {
+          "$ref": "#/$defs/cueMode"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "GameInfoUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "GameInfoUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "info": {
+          "$ref": "#/$defs/info"
+        },
+        "timezone": {
+          "$ref": "#/$defs/timezone"
+        },
+        "gameType": {
+          "$ref": "#/$defs/gameType"
+        },
+        "cueMode": {
+          "$ref": "#/$defs/cueMode"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "RulesChanged",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "overrides"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "RulesChanged"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "overrides": {
+          "$ref": "#/$defs/ruleOverrides"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TeamSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "team",
+        "name"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TeamSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "name": {
+          "type": "string"
+        },
+        "preparedTeam": {
+          "$ref": "#/$defs/id"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "teamName": {
+          "type": "string"
+        },
+        "initials": {
+          "type": "string"
+        },
+        "nameCue": {
+          "type": "string"
+        },
+        "nameCuePronunciation": {
+          "type": "string"
+        },
+        "uniformColor": {
+          "type": "string"
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "alternateNames": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "logo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TeamUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "team"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TeamUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "preparedTeam": {
+          "$ref": "#/$defs/id"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "teamName": {
+          "type": "string"
+        },
+        "initials": {
+          "type": "string"
+        },
+        "nameCue": {
+          "type": "string"
+        },
+        "nameCuePronunciation": {
+          "type": "string"
+        },
+        "uniformColor": {
+          "type": "string"
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "alternateNames": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "logo": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SkaterAdded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "team",
+        "skater",
+        "number"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SkaterAdded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pronouns": {
+          "type": "string"
+        },
+        "pronunciation": {
+          "type": "string"
+        },
+        "wuid": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/$defs/flags"
+        },
+        "status": {
+          "$ref": "#/$defs/skaterStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SkaterUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "skater"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SkaterUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pronouns": {
+          "type": "string"
+        },
+        "pronunciation": {
+          "type": "string"
+        },
+        "wuid": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/$defs/flags"
+        },
+        "status": {
+          "$ref": "#/$defs/skaterStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SkaterRemoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "skater"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SkaterRemoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "skater": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SkaterReplaced",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "skater",
+        "by"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SkaterReplaced"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "by": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "StaffAdded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "team",
+        "staff",
+        "name"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "StaffAdded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "staff": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/$defs/flags"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "StaffUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "staff"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "StaffUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "staff": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "flags": {
+          "$ref": "#/$defs/flags"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "StaffRemoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "staff"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "StaffRemoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "staff": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OfficialAssigned",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "official",
+        "name",
+        "role"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OfficialAssigned"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "official": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "cert": {
+          "type": "string"
+        },
+        "p1Team": {
+          "$ref": "#/$defs/team"
+        },
+        "swap": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OfficialUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "official"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OfficialUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "official": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "cert": {
+          "type": "string"
+        },
+        "p1Team": {
+          "$ref": "#/$defs/team"
+        },
+        "swap": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OfficialRemoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "official"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OfficialRemoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "official": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PeriodStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "period",
+        "number"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PeriodStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "period": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamUpcoming",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam",
+        "number"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamUpcoming"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "period",
+        "jam",
+        "number"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "period": {
+          "$ref": "#/$defs/id"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "overtime": {
+          "type": "boolean"
+        },
+        "injuryContinuation": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamEnded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "jc",
+        "jam",
+        "reason"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamEnded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "reason": {
+          "enum": [
+            "time",
+            "calloff",
+            "injury",
+            "official",
+            "unknown"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "reason": {
+          "enum": [
+            "time",
+            "calloff",
+            "injury",
+            "official",
+            "unknown"
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TimeoutStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "timeout",
+        "afterJam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TimeoutStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        },
+        "afterJam": {
+          "$ref": "#/$defs/id"
+        },
+        "owner": {
+          "$ref": "#/$defs/owner"
+        },
+        "review": {
+          "type": "boolean"
+        },
+        "asTimeout": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TimeoutUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "timeout"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TimeoutUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        },
+        "owner": {
+          "$ref": "#/$defs/owner"
+        },
+        "review": {
+          "type": "boolean"
+        },
+        "asTimeout": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TimeoutEnded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "timeout",
+        "duration"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TimeoutEnded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OfficialReviewResolved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "timeout",
+        "retained"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OfficialReviewResolved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        },
+        "retained": {
+          "type": "boolean"
+        },
+        "request": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PeriodEnded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "period"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PeriodEnded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "period": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OvertimeStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OvertimeStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {}
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "LineupStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "LineupStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {}
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SuddenScoringSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "period",
+        "value"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SuddenScoringSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "period": {
+          "$ref": "#/$defs/id"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ClockSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "clock",
+        "time"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ClockSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "clock": {
+          "enum": [
+            "period",
+            "jam",
+            "lineup",
+            "timeout",
+            "intermission"
+          ]
+        },
+        "time": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+        },
+        "number": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ScoreDeclaredOfficial",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "score"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ScoreDeclaredOfficial"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "score": {
+          "$ref": "#/$defs/score"
+        },
+        "hr": {
+          "$ref": "#/$defs/id"
+        },
+        "hnso": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "GameEndedEarly",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "outcome",
+        "reason"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "GameEndedEarly"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "outcome": {
+          "enum": [
+            "cancelled",
+            "forfeit"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "forfeitingTeam": {
+          "$ref": "#/$defs/team"
+        }
+      },
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "forfeit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "forfeitingTeam"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "forfeitingTeam"
+          ]
+        }
+      }
+    },
+    {
+      "title": "Undone",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "reverts"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "Undone"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "reverts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "minItems": 1
+        },
+        "clocks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "period": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+            },
+            "jam": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+            },
+            "lineup": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+            },
+            "intermission": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Remaining time in ms (clock maximum minus elapsed), as shown to the operator"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamFlagSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jc",
+        "jam",
+        "team",
+        "flag",
+        "value"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamFlagSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "flag": {
+          "enum": [
+            "lead",
+            "lost",
+            "calloff",
+            "noPivot"
+          ]
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TripStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jc",
+        "jam",
+        "team",
+        "trip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TripStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "trip": {
+          "$ref": "#/$defs/id"
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TripPointsSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "trip",
+        "points"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TripPointsSet"
+        },
+        "pc": {},
+        "jc": {
+          "$ref": "#/$defs/ms"
+        },
+        "src": {},
+        "trip": {
+          "$ref": "#/$defs/id"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TripInserted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "before",
+        "trip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TripInserted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "before": {
+          "$ref": "#/$defs/id"
+        },
+        "trip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TripRemoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "trip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TripRemoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "trip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "StarPassSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jc",
+        "jam",
+        "team",
+        "trip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "StarPassSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "trip": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "OsOffsetSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam",
+        "team",
+        "offset"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "OsOffsetSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ScoreAdjustmentRecorded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "adjustment",
+        "team",
+        "amount",
+        "jam",
+        "duringJam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ScoreAdjustmentRecorded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "adjustment": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "duringJam": {
+          "type": "boolean"
+        },
+        "lastTwoMinutes": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ScoreAdjustmentApplied",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "adjustment",
+        "trip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ScoreAdjustmentApplied"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "adjustment": {
+          "$ref": "#/$defs/id"
+        },
+        "trip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ScoreAdjustmentDiscarded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "adjustment"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ScoreAdjustmentDiscarded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "adjustment": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "FieldingSet",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam",
+        "team",
+        "position"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "FieldingSet"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "position": {
+          "$ref": "#/$defs/position"
+        },
+        "skater": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notFielded": {
+          "type": "boolean"
+        },
+        "sitFor3": {
+          "type": "boolean"
+        },
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "LineupCopied",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "fromJam",
+        "toJam",
+        "team"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "LineupCopied"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "fromJam": {
+          "$ref": "#/$defs/id"
+        },
+        "toJam": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PenaltyIssued",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "jc",
+        "penalty",
+        "code",
+        "jam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PenaltyIssued"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "type": "string"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "staff": {
+          "$ref": "#/$defs/id"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "calledBy": {
+          "$ref": "#/$defs/id"
+        },
+        "callingPosition": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "skater"
+          ]
+        },
+        {
+          "required": [
+            "staff"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PenaltyUpdated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "penalty"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PenaltyUpdated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "type": "string"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "calledBy": {
+          "$ref": "#/$defs/id"
+        },
+        "callingPosition": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PenaltyRemoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "penalty"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PenaltyRemoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "penalty": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PenaltyForceServed",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "penalty",
+        "value"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PenaltyForceServed"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "ExpulsionRecorded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "penalty",
+        "info",
+        "suspension"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "ExpulsionRecorded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "info": {
+          "type": "string"
+        },
+        "suspension": {
+          "type": "boolean"
+        },
+        "extraInfo": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "SuspensionServed",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "skater"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "SuspensionServed"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "game": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripStarted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "jc",
+        "boxTrip",
+        "team",
+        "jammer",
+        "jam",
+        "betweenJams",
+        "afterStarPass"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripStarted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/team"
+        },
+        "jammer": {
+          "type": "boolean"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "betweenJams": {
+          "type": "boolean"
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        },
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "position": {
+          "$ref": "#/$defs/position"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripEnded",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "pc",
+        "jc",
+        "boxTrip",
+        "jam",
+        "betweenJams",
+        "afterStarPass"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripEnded"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "betweenJams": {
+          "type": "boolean"
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripMoved",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripMoved"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "start": {
+          "$ref": "#/$defs/boxPoint"
+        },
+        "end": {
+          "$ref": "#/$defs/boxPoint"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripReopened",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripReopened"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripDeleted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripDeleted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripPenaltyLinked",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip",
+        "penalty",
+        "value"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripPenaltyLinked"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "BoxTripShortened",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip",
+        "amount"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripShortened"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "time": {
+          "$ref": "#/$defs/ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamInserted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam",
+        "before"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamInserted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "before": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "JamDeleted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "jam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "JamDeleted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "jam": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TimeoutInserted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "timeout",
+        "afterJam"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TimeoutInserted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        },
+        "afterJam": {
+          "$ref": "#/$defs/id"
+        },
+        "owner": {
+          "$ref": "#/$defs/owner"
+        },
+        "review": {
+          "type": "boolean"
+        },
+        "asTimeout": {
+          "type": "boolean"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "TimeoutDeleted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "timeout"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "TimeoutDeleted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "timeout": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "PeriodDeleted",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "period"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "PeriodDeleted"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "period": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "Annotated",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "target",
+        "text"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "Annotated"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "id"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "trip",
+                "fielding",
+                "penalty",
+                "boxTrip",
+                "teamJamSk",
+                "teamJamLt"
+              ]
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "HintDismissed",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "check",
+        "target",
+        "reason"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "HintDismissed"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "check": {
+          "type": "string"
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            }
+          }
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "title": "Checkpoint",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "summarySha256"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "Checkpoint"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "summarySha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_./-]{1,100}$"
+    },
+    "team": {
+      "enum": [
+        "1",
+        "2"
+      ]
+    },
+    "owner": {
+      "enum": [
+        "1",
+        "2",
+        "O",
+        ""
+      ]
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Milliseconds"
+    },
+    "position": {
+      "enum": [
+        "Jammer",
+        "Pivot",
+        "Blocker1",
+        "Blocker2",
+        "Blocker3"
+      ]
+    },
+    "timezone": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$",
+      "description": "IANA time zone, e.g. Europe/Paris"
+    },
+    "cueMode": {
+      "enum": [
+        "color",
+        "name"
+      ],
+      "description": "How officials identify teams in verbal cues: uniform color or Team Name Cue"
+    },
+    "gameType": {
+      "enum": [
+        "sanctioned",
+        "regulation",
+        "other"
+      ],
+      "description": "WFTDA Sanctioning Policy definitions"
+    },
+    "skaterStatus": {
+      "enum": [
+        "eligible",
+        "ineligible",
+        "notInGame"
+      ]
+    },
+    "flags": {
+      "type": "string",
+      "description": "Space-separated roster flags: C, A, BC, BA, ALT"
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "1",
+        "2"
+      ],
+      "properties": {
+        "1": {
+          "type": "integer"
+        },
+        "2": {
+          "type": "integer"
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      },
+      "description": "Rule id -> value, e.g. \"Period.Number\": 2"
+    },
+    "ruleOverrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean",
+          "null"
+        ]
+      },
+      "description": "Rule id -> value; null removes an earlier override"
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "baseVersion",
+        "overrides"
+      ],
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "Built-in ruleset id, e.g. WFTDARuleset"
+        },
+        "baseVersion": {
+          "type": "string",
+          "description": "Scoreboard release whose rule defaults apply"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name, e.g. of a flattened custom ruleset"
+        },
+        "overrides": {
+          "$ref": "#/$defs/rules"
+        }
+      }
+    },
+    "info": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "description": "Free-form game info (venue, tournament, date, ...). null removes a key."
+    },
+    "boxPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jam",
+        "betweenJams",
+        "afterStarPass"
+      ],
+      "properties": {
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "betweenJams": {
+          "type": "boolean"
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

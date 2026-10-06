@@ -1,0 +1,948 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/rollerderby/scoreboard/schema/game-1.json",
+  "title": "CRG game summary (<game>.json)",
+  "description": "Draft v1. Nested, human-readable summary of one game, rebuilt from the event log. Contains no derived values except result.score (see README.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "state",
+    "ruleset",
+    "teams",
+    "periods"
+  ],
+  "properties": {
+    "schema": {
+      "const": "crg-game/1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "name": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "prepared",
+        "running",
+        "finished",
+        "cancelled",
+        "forfeited"
+      ]
+    },
+    "info": {
+      "type": "object",
+      "description": "Free-form game info: venue, tournament, date, host league, importedFrom, ...",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA time zone of the venue, e.g. Europe/Paris"
+    },
+    "gameType": {
+      "enum": [
+        "sanctioned",
+        "regulation",
+        "other"
+      ],
+      "description": "WFTDA Sanctioning Policy definitions"
+    },
+    "cueMode": {
+      "enum": [
+        "color",
+        "name"
+      ],
+      "description": "How officials identify teams in verbal cues"
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "baseVersion",
+        "overrides"
+      ],
+      "properties": {
+        "base": {
+          "type": "string",
+          "description": "Built-in ruleset id, e.g. WFTDARuleset"
+        },
+        "baseVersion": {
+          "type": "string",
+          "description": "Scoreboard release whose rule defaults apply"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name, e.g. of a flattened custom ruleset"
+        },
+        "overrides": {
+          "type": "object",
+          "description": "Rule id -> value, only rules that differ from the base. Includes all RulesChanged events.",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "teams": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/team"
+      }
+    },
+    "officials": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/official"
+      }
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/period"
+      }
+    },
+    "upcomingJam": {
+      "$ref": "#/$defs/jam",
+      "description": "The next jam, if it exists before it starts (see README: The upcoming jam)."
+    },
+    "penalties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/penalty"
+      }
+    },
+    "boxTrips": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/boxTrip"
+      }
+    },
+    "expulsions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/expulsion"
+      }
+    },
+    "scoreAdjustments": {
+      "type": "array",
+      "description": "Only adjustments that are still open (not applied to a trip and not discarded).",
+      "items": {
+        "$ref": "#/$defs/scoreAdjustment"
+      }
+    },
+    "result": {
+      "$ref": "#/$defs/result"
+    },
+    "log": {
+      "type": "object",
+      "description": "Which part of the event log this summary reflects.",
+      "additionalProperties": false,
+      "required": [
+        "lastSeq"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "lastSeq": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "dismissedHints": {
+      "type": "array",
+      "description": "Hints someone checked and marked as correct (HintDismissed)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check",
+          "target",
+          "reason"
+        ],
+        "properties": {
+          "check": {
+            "type": "string"
+          },
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "reason": {
+            "type": "string"
+          },
+          "time": {
+            "$ref": "#/$defs/time"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_./-]{1,100}$"
+    },
+    "teamId": {
+      "enum": [
+        "1",
+        "2"
+      ]
+    },
+    "ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Milliseconds"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "position": {
+      "enum": [
+        "Jammer",
+        "Pivot",
+        "Blocker1",
+        "Blocker2",
+        "Blocker3"
+      ]
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "team",
+        "name",
+        "skaters"
+      ],
+      "properties": {
+        "team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "preparedTeam": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "fullName": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "teamName": {
+          "type": "string"
+        },
+        "initials": {
+          "type": "string"
+        },
+        "nameCue": {
+          "type": "string",
+          "description": "Team Name Cue used in verbal cues (1-3 syllables, no colors or numbers)"
+        },
+        "nameCuePronunciation": {
+          "type": "string"
+        },
+        "uniformColor": {
+          "type": "string"
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "alternateNames": {
+          "type": "object",
+          "description": "Keys as Team.AlternateNameId: scoreboard, whiteboard, operator, plt, box, overlay, twitter",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "logo": {
+          "type": "string"
+        },
+        "skaters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/skater"
+          }
+        },
+        "staff": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/staff"
+          }
+        }
+      }
+    },
+    "skater": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pronouns": {
+          "type": "string"
+        },
+        "pronunciation": {
+          "type": "string",
+          "description": "How to say the skater name, for announcers (WFTDA charter: Skater Name Pronunciation)"
+        },
+        "wuid": {
+          "type": "string",
+          "description": "WFTDA unique skater id: the same skater across teams and years"
+        },
+        "flags": {
+          "type": "string",
+          "description": "Space-separated: C, A, BC, BA, ALT"
+        },
+        "status": {
+          "enum": [
+            "ineligible",
+            "notInGame"
+          ],
+          "description": "Absent means eligible"
+        }
+      }
+    },
+    "official": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "role"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "league": {
+          "type": "string"
+        },
+        "cert": {
+          "type": "string"
+        },
+        "p1Team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "swap": {
+          "type": "boolean"
+        }
+      }
+    },
+    "period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "jams"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "start": {
+          "$ref": "#/$defs/time"
+        },
+        "end": {
+          "$ref": "#/$defs/time"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        },
+        "jams": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/jam"
+          }
+        },
+        "timeouts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/timeout"
+          }
+        },
+        "suddenScoring": {
+          "type": "boolean",
+          "description": "The period is in sudden scoring (JRDA): shorter jams, points from the first pass, no lead jammer"
+        }
+      }
+    },
+    "jam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "teams"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "overtime": {
+          "type": "boolean"
+        },
+        "injuryContinuation": {
+          "type": "boolean"
+        },
+        "start": {
+          "$ref": "#/$defs/time"
+        },
+        "end": {
+          "$ref": "#/$defs/time"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        },
+        "periodClockStart": {
+          "$ref": "#/$defs/ms",
+          "description": "Period clock elapsed at jam start"
+        },
+        "periodClockEnd": {
+          "$ref": "#/$defs/ms",
+          "description": "Period clock elapsed at jam end"
+        },
+        "endReason": {
+          "enum": [
+            "time",
+            "calloff",
+            "injury",
+            "official",
+            "unknown"
+          ]
+        },
+        "endDetail": {
+          "type": "string",
+          "description": "Why officials stopped the jam, for endReason official"
+        },
+        "teams": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/teamJam"
+          }
+        }
+      }
+    },
+    "teamJam": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "team",
+        "trips"
+      ],
+      "properties": {
+        "team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "lead": {
+          "type": "boolean"
+        },
+        "lost": {
+          "type": "boolean"
+        },
+        "calloff": {
+          "type": "boolean"
+        },
+        "noPivot": {
+          "type": "boolean"
+        },
+        "starPassTrip": {
+          "description": "ID of the pivot's first trip: the trip in which the star was passed. It and all later trips are after the star pass. Absent if there was no star pass.",
+          "$ref": "#/$defs/id"
+        },
+        "osOffset": {
+          "type": "integer"
+        },
+        "osOffsetReason": {
+          "type": "string"
+        },
+        "trips": {
+          "type": "array",
+          "description": "In order. The first entry is the initial trip.",
+          "items": {
+            "$ref": "#/$defs/trip"
+          }
+        },
+        "lineup": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/position"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/fielding"
+          }
+        },
+        "skAnnotation": {
+          "type": "string"
+        },
+        "ltAnnotation": {
+          "type": "string"
+        }
+      }
+    },
+    "trip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "points"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        },
+        "jamClockStart": {
+          "$ref": "#/$defs/ms"
+        },
+        "jamClockEnd": {
+          "$ref": "#/$defs/ms"
+        },
+        "annotation": {
+          "type": "string"
+        }
+      }
+    },
+    "fielding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "notFielded": {
+          "type": "boolean"
+        },
+        "sitFor3": {
+          "type": "boolean"
+        },
+        "annotation": {
+          "type": "string"
+        },
+        "boxTrip": {
+          "$ref": "#/$defs/id",
+          "description": "The skater sits in this box trip for someone else (a substitute)"
+        }
+      }
+    },
+    "timeout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "owner",
+        "afterJam"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "owner": {
+          "enum": [
+            "1",
+            "2",
+            "O",
+            ""
+          ]
+        },
+        "review": {
+          "type": "boolean"
+        },
+        "asTimeout": {
+          "type": "boolean",
+          "description": "An Official Review used as a timeout"
+        },
+        "retained": {
+          "type": "boolean"
+        },
+        "reviewRequest": {
+          "type": "string"
+        },
+        "reviewResult": {
+          "type": "string"
+        },
+        "afterJam": {
+          "$ref": "#/$defs/id"
+        },
+        "start": {
+          "$ref": "#/$defs/time"
+        },
+        "end": {
+          "$ref": "#/$defs/time"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms"
+        },
+        "periodClock": {
+          "$ref": "#/$defs/ms",
+          "description": "Period clock elapsed when the timeout started"
+        },
+        "periodClockEnd": {
+          "$ref": "#/$defs/ms",
+          "description": "Period clock elapsed when the timeout ended, after corrections made during it (Officiating Procedures 4.5, 4.7)"
+        }
+      }
+    },
+    "penalty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "team",
+        "slot",
+        "code",
+        "jam"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "staff": {
+          "$ref": "#/$defs/id"
+        },
+        "slot": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "code": {
+          "type": "string"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "time": {
+          "$ref": "#/$defs/time"
+        },
+        "periodClock": {
+          "$ref": "#/$defs/ms"
+        },
+        "jamClock": {
+          "$ref": "#/$defs/ms"
+        },
+        "calledBy": {
+          "$ref": "#/$defs/id"
+        },
+        "callingPosition": {
+          "type": "string"
+        },
+        "forceServed": {
+          "type": "boolean"
+        },
+        "annotation": {
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "skater"
+          ]
+        },
+        {
+          "required": [
+            "staff"
+          ]
+        }
+      ]
+    },
+    "boxPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "jam",
+        "betweenJams",
+        "afterStarPass"
+      ],
+      "properties": {
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "betweenJams": {
+          "type": "boolean"
+        },
+        "afterStarPass": {
+          "type": "boolean"
+        },
+        "time": {
+          "$ref": "#/$defs/time"
+        },
+        "jamClock": {
+          "$ref": "#/$defs/ms"
+        },
+        "position": {
+          "$ref": "#/$defs/position",
+          "description": "On a start point: the lineup position the trip started from"
+        }
+      }
+    },
+    "boxTrip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "team",
+        "jammer",
+        "start"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "skater": {
+          "$ref": "#/$defs/id"
+        },
+        "jammer": {
+          "type": "boolean"
+        },
+        "start": {
+          "$ref": "#/$defs/boxPoint"
+        },
+        "end": {
+          "$ref": "#/$defs/boxPoint",
+          "description": "Absent while the skater is still in the box"
+        },
+        "duration": {
+          "$ref": "#/$defs/ms",
+          "description": "Time served on the box clock, if timed"
+        },
+        "shortened": {
+          "type": "integer"
+        },
+        "penalties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "annotation": {
+          "type": "string"
+        },
+        "shortenedTime": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Box time taken off by jammer swaps, ms"
+        }
+      }
+    },
+    "expulsion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "penalty",
+        "info",
+        "suspension"
+      ],
+      "properties": {
+        "penalty": {
+          "$ref": "#/$defs/id"
+        },
+        "info": {
+          "type": "string"
+        },
+        "extraInfo": {
+          "type": "string"
+        },
+        "suspension": {
+          "type": "boolean"
+        }
+      }
+    },
+    "scoreAdjustment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "team",
+        "amount",
+        "jam",
+        "duringJam"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "team": {
+          "$ref": "#/$defs/teamId"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "jam": {
+          "$ref": "#/$defs/id"
+        },
+        "duringJam": {
+          "type": "boolean"
+        },
+        "lastTwoMinutes": {
+          "type": "boolean"
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "officialScore": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "1",
+            "2"
+          ],
+          "properties": {
+            "1": {
+              "type": "integer"
+            },
+            "2": {
+              "type": "integer"
+            }
+          }
+        },
+        "declaredAt": {
+          "$ref": "#/$defs/time"
+        },
+        "hr": {
+          "$ref": "#/$defs/id"
+        },
+        "hnso": {
+          "$ref": "#/$defs/id"
+        },
+        "suspensionsServed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "endedEarly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "outcome",
+            "reason",
+            "periodClock"
+          ],
+          "properties": {
+            "outcome": {
+              "enum": [
+                "cancelled",
+                "forfeit"
+              ]
+            },
+            "forfeitingTeam": {
+              "$ref": "#/$defs/teamId"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "time": {
+              "$ref": "#/$defs/time"
+            },
+            "period": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Period number when the game ended; 0 if it hadn't started"
+            },
+            "periodClock": {
+              "$ref": "#/$defs/ms",
+              "description": "Period clock elapsed when the game ended: the 'ending game time' on the IGRF"
+            }
+          }
+        }
+      }
+    },
+    "staff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "flags": {
+          "type": "string",
+          "description": "A for a non-skating Alternate"
+        }
+      }
+    }
+  }
+}

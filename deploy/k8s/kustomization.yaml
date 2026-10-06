@@ -1,0 +1,14 @@
+# kubectl apply -k deploy/k8s   (k3s: Traefik ingress, local-path storage)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: rtfm
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+images:
+  - name: rtfm
+    newName: rtfm # e.g. ghcr.io/<you>/rtfm, or a local image imported with: k3s ctr images import rtfm.tar
+    newTag: latest
