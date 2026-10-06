@@ -88,6 +88,8 @@ type Event struct {
 	Crews   []*crews.Crew          `json:"crews"`
 	Notes   []string               `json:"notes"`
 	Ruleset string                 `json:"ruleset"` // a preset's name
+
+	mu sync.RWMutex // Crews, which can be edited while games are made
 }
 
 // Options are how Load runs: the tournament's id ("" makes one) and where
@@ -235,6 +237,49 @@ func (ev *Event) color(team int, scheduled string, side int) string {
 	return lt.UniformColors[0]
 }
 
+// CrewList is a copy of the crews, to show or change (SetCrews).
+func (ev *Event) CrewList() []*crews.Crew {
+	ev.mu.RLock()
+	defer ev.mu.RUnlock()
+	out := make([]*crews.Crew, len(ev.Crews))
+	for i, c := range ev.Crews {
+		cp := *c
+		cp.Officials = append([]crews.Official{}, c.Officials...)
+		cp.Games = append([]string{}, c.Games...)
+		out[i] = &cp
+	}
+	return out
+}
+
+// SetCrews replaces the crews (edited, or filled in from a roster). A crew
+// without an ID gets one.
+func (ev *Event) SetCrews(cs []*crews.Crew) {
+	ev.mu.Lock()
+	defer ev.mu.Unlock()
+	used := map[string]bool{}
+	for _, c := range cs {
+		used[c.ID] = true
+	}
+	n := 0
+	for _, c := range cs {
+		for c.ID == "" || c.ID == "-" {
+			n++
+			if id := fmt.Sprintf("crew-%d", n); !used[id] {
+				c.ID, used[id] = id, true
+			}
+		}
+	}
+	ev.Crews = cs
+}
+
+// MarshalJSON keeps the crews still while they're written.
+func (ev *Event) MarshalJSON() ([]byte, error) {
+	ev.mu.RLock()
+	defer ev.mu.RUnlock()
+	type plain Event
+	return json.Marshal((*plain)(ev))
+}
+
 // crewFor is the crew the infopack assigned to the game between two teams.
 func (ev *Event) crewFor(teams [2]int) *crews.Crew {
 	if teams[0] == 0 || teams[1] == 0 {
@@ -249,11 +294,15 @@ func (ev *Event) crewFor(teams [2]int) *crews.Crew {
 			names[i] = append(names[i], lt.Name, lt.League, lt.TeamName)
 		}
 	}
+	ev.mu.RLock()
+	defer ev.mu.RUnlock()
 	return prepare.MatchCrew(ev.Crews, names)
 }
 
 // Crew is a crew by ID.
 func (ev *Event) Crew(id string) *crews.Crew {
+	ev.mu.RLock()
+	defer ev.mu.RUnlock()
 	for _, c := range ev.Crews {
 		if c.ID == id {
 			return c
@@ -262,8 +311,9 @@ func (ev *Event) Crew(id string) *crews.Crew {
 	return nil
 }
 
-// Build makes one game as it is before it's played.
-func (ev *Event) Build(v *crgformat.Validators, no int, ch Choice) (*replay.Summary, error) {
+// Build makes one game as it is before it's played, with a ruleset preset
+// ("" for the tournament's).
+func (ev *Event) Build(v *crgformat.Validators, no int, ch Choice, ruleset string) (*replay.Summary, error) {
 	g := ev.T.GameByNo(no)
 	if g == nil {
 		return nil, fmt.Errorf("there is no game %d", no)
@@ -276,7 +326,7 @@ func (ev *Event) Build(v *crgformat.Validators, no int, ch Choice) (*replay.Summ
 		}
 	}
 	for _, p := range rulesets.Presets {
-		if p.Name == cmp.Or(ev.Ruleset, rulesets.Presets[0].Name) {
+		if p.Name == cmp.Or(ruleset, ev.Ruleset, rulesets.Presets[0].Name) {
 			pg.Ruleset = rulesets.Ruleset(p)
 		}
 	}

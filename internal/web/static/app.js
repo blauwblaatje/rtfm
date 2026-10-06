@@ -97,9 +97,6 @@ function renderInfo() {
   $("teams").innerHTML = `<table class="list"><thead><tr><th>#</th><th>Team</th><th>Charter</th><th>Skaters</th><th>Colours</th></tr></thead><tbody>
     ${E.teams.map((t) => `<tr><td>${t.no}</td><td>${esc(t.name)}</td><td>${t.missing ? `<span class="error">${esc(t.missing)}</span>` : esc(t.charter)}</td>
       <td>${t.skaters || ""}</td><td>${esc((t.colors || []).join(", "))}</td></tr>`).join("")}</tbody></table>`;
-  $("crewsBox").hidden = !E.crews.length;
-  $("crews").innerHTML = `<table class="list"><thead><tr><th>Crew</th><th>Officials</th><th>Heads</th><th>Games in the infopack</th></tr></thead><tbody>
-    ${E.crews.map((c) => `<tr><td>${esc(c.name)}</td><td>${c.officials}</td><td>${esc((c.heads || []).join(", "))}</td><td>${esc((c.games || []).join("; "))}</td></tr>`).join("")}</tbody></table>`;
   $("notesBox").hidden = !E.notes.length;
   $("notes").innerHTML = E.notes.map((n) => `<li>${esc(n)}</li>`).join("");
   const missing = Object.keys(E.missing || {}).length;
@@ -128,6 +125,117 @@ document.addEventListener("change", (e) => {
 });
 
 $("reset").addEventListener("click", () => { choices = {}; save(); render(); });
+
+// --- crews: edited here, kept on the server --------------------------------------------
+
+let C = []; // the crews being edited
+let roles = [];
+let dirty = false;
+
+async function loadCrews() {
+  const d = await (await fetch(`/t/${id}/crews`)).json();
+  C = d.crews || [];
+  roles = d.roles || [];
+  dirty = false;
+  renderCrews();
+}
+
+function renderCrews() {
+  $("saveCrews").disabled = !dirty;
+  $("saveCrews").textContent = dirty ? "Save crews" : "Saved";
+  if (!C.length) { $("crews").innerHTML = `<p class="muted">No crews yet: load an infopack with the tournament, or make one with New crew.</p>`; return; }
+  const field = (ci, oi, k, v, size) => `<input data-crew="${ci}" data-off="${oi}" data-f="${k}" value="${esc(v)}" ${size ? `size="${size}"` : ""} aria-label="${k}">`;
+  $("crews").innerHTML = C.map((c, ci) => `<fieldset class="crew">
+    <legend><input class="crewName" data-crew="${ci}" data-f="crewName" value="${esc(c.name)}" aria-label="Crew name"></legend>
+    ${(c.games || []).length ? `<p class="muted small">In the infopack for: ${esc(c.games.join("; "))}</p>` : ""}
+    <div class="scroll"><table class="crewTable"><thead><tr><th>Position</th><th>Name</th><th>Pronouns</th><th>League affiliation</th><th>Certification</th><th>Head</th><th></th></tr></thead>
+    <tbody>${(c.officials || []).map((o, oi) => `<tr class="${o.league && o.cert ? "" : "incomplete"}">
+      <td><select data-crew="${ci}" data-off="${oi}" data-f="role" aria-label="Position">${roles.map((r) => `<option ${r === o.role ? "selected" : ""}>${esc(r)}</option>`).join("")}</select></td>
+      <td>${field(ci, oi, "name", o.name)}</td><td>${field(ci, oi, "pronouns", o.pronouns, 8)}</td>
+      <td>${field(ci, oi, "league", o.league)}</td><td>${field(ci, oi, "cert", o.cert)}</td>
+      <td class="c"><input type="checkbox" data-crew="${ci}" data-off="${oi}" data-f="head" ${o.head ? "checked" : ""} aria-label="Head"></td>
+      <td><button type="button" class="quiet" data-delofficial="${ci}:${oi}" title="remove">✕</button></td></tr>`).join("")}</tbody></table></div>
+    <p><button type="button" data-addofficial="${ci}">Add official</button>
+      <button type="button" class="quiet" data-delcrew="${ci}">Delete this crew</button>
+      <span class="muted small">${(c.officials || []).filter((o) => !(o.league && o.cert)).length} without league or certification</span></p>
+  </fieldset>`).join("");
+}
+
+function changed() { dirty = true; $("saveCrews").disabled = false; $("saveCrews").textContent = "Save crews"; }
+
+$("crews").addEventListener("input", (e) => {
+  const el = e.target, ci = el.dataset.crew;
+  if (ci === undefined) return;
+  const c = C[+ci];
+  if (el.dataset.f === "crewName") c.name = el.value;
+  else {
+    const o = c.officials[+el.dataset.off];
+    o[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value;
+  }
+  changed();
+});
+$("crews").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.addofficial !== undefined) { C[+b.dataset.addofficial].officials.push({ name: "", role: roles[0], league: "", cert: "" }); changed(); return renderCrews(); }
+  if (b.dataset.delofficial) { const [ci, oi] = b.dataset.delofficial.split(":").map(Number); C[ci].officials.splice(oi, 1); changed(); return renderCrews(); }
+  if (b.dataset.delcrew !== undefined) {
+    if (!confirm(`Delete ${C[+b.dataset.delcrew].name}?`)) return;
+    C.splice(+b.dataset.delcrew, 1); changed(); return renderCrews();
+  }
+});
+$("newCrew").addEventListener("click", () => {
+  C.push({ id: "", name: `Crew ${C.length + 1}`, officials: roles.slice(0, 1).map((r) => ({ name: "", role: r, head: true })) });
+  changed();
+  renderCrews();
+});
+
+async function crewRequest(url, opts, what) {
+  $("crewMsg").textContent = `${what}…`;
+  try {
+    const r = await fetch(url, opts);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    C = d.crews || []; dirty = false; renderCrews();
+    const rep = d.report;
+    $("crewMsg").textContent = rep ? `${what}: found ${rep.matched} of ${rep.officials} officials, ${rep.changed} changed.` +
+      (rep.notFound.length ? ` Not found: ${rep.notFound.join(", ")}.` : "") +
+      ((rep.twice || []).length ? ` More than one official with the name ${rep.twice.join(", ")} on the roster: fill those in by hand.` : "") : `${what}: done.`;
+    const ev = await (await fetch(`/t/${id}/data.json`)).json();
+    E.crews = ev.crews || [];
+    render();
+    return true;
+  } catch (e) {
+    $("crewMsg").textContent = `${what}: ${e.message}`;
+    return false;
+  }
+}
+
+function formWith(file) {
+  const f = new FormData();
+  if (file) f.append("file", file);
+  if ($("overwrite").checked) f.append("overwrite", "1");
+  return f;
+}
+
+$("saveCrews").addEventListener("click", () => crewRequest(`/t/${id}/crews`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(C) }, "Saving the crews"));
+$("fillRoster").addEventListener("click", async () => {
+  if (dirty && !confirm("Save your changes first? Filling in from the roster starts from the saved crews.")) return;
+  if (dirty) await crewRequest(`/t/${id}/crews`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(C) }, "Saving the crews");
+  const ok = await crewRequest(`/t/${id}/crews/roster`, { method: "POST", body: formWith() }, "Filling in from WFTDA's roster");
+  $("rosterFallback").hidden = ok;
+});
+$("fillRosterFile").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (f) crewRequest(`/t/${id}/crews/roster`, { method: "POST", body: formWith(f) }, "Filling in from the saved roster page").then((ok) => { $("rosterFallback").hidden = ok; });
+  e.target.value = "";
+});
+$("fillList").addEventListener("change", (e) => {
+  const f = e.target.files[0];
+  if (f) crewRequest(`/t/${id}/crews/list`, { method: "POST", body: formWith(f) }, `Filling in from ${f.name}`);
+  e.target.value = "";
+});
+window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
 
 $("allForm").addEventListener("submit", () => {
   const all = {};
@@ -164,6 +272,7 @@ fetch(`/t/${id}/data.json`).then((r) => r.json()).then((d) => {
   E = d;
   renderInfo();
   render();
+  loadCrews();
 }).catch((e) => {
   report(e.message, "data.json", 0, 0, e.stack);
   $("games").innerHTML = `<p class="error">Something went wrong showing this tournament: ${esc(e.message)}. It's in the log.</p>`;

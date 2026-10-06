@@ -35,7 +35,26 @@
   <section id="games" aria-label="Games"><p class="muted">Loading…</p></section>
 
   <details id="teamsBox"><summary>Teams and charters</summary><div id="teams"></div></details>
-  <details id="crewsBox"><summary>Crews from the infopack</summary><div id="crews"></div></details>
+  <details id="crewsBox" open>
+    <summary>Crews and officials</summary>
+    <p class="muted small">The officials go on the IGRF with their league and certification. Fill those in from WFTDA's
+      roster of certified officials (matched by name; Non-Skating levels for NSO positions, Skating levels for referees),
+      or from a list of your own (.xlsx or .csv with name, league and certification columns), and edit what's left.
+      Changes are kept with this tournament, for everyone who opens it.</p>
+    <div class="crewTools">
+      <button type="button" id="fillRoster">Fill in from WFTDA's roster</button>
+      <label class="button">Fill in from a list… <input type="file" id="fillList" accept=".xlsx,.csv,.txt" hidden></label>
+      <label class="check"><input type="checkbox" id="overwrite"> replace what's filled in already</label>
+      <button type="button" id="newCrew" class="quiet">New crew</button>
+      <button type="button" id="saveCrews" class="primary" disabled>Save crews</button>
+    </div>
+    <p class="small" id="crewMsg" role="status"></p>
+    <p class="muted small" id="rosterFallback" hidden>WFTDA's site turned RTFM away. Open
+      <a href="https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/" target="_blank" rel="noopener">the roster</a>
+      in your browser, save the page (Ctrl+S, "Webpage, HTML only"), and
+      <label class="link">upload it here <input type="file" id="fillRosterFile" accept=".html,.htm" hidden></label>.</p>
+    <div id="crews"></div>
+  </details>
   <details id="notesBox"><summary>Notes from reading the sheets</summary><ul id="notes" class="small"></ul></details>
 </main>
 <footer>RTFM · Roller derby Tournament Fixture Maker</footer>

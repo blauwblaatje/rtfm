@@ -56,7 +56,7 @@ func TestChampionships(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sum, err := ev.Build(v, g1.No, g1.Default)
+	sum, err := ev.Build(v, g1.No, g1.Default, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestChampionships(t *testing.T) {
 	// A bracket game with teams picked.
 	ch := last.Default
 	ch.Teams = [2]int{1, 2}
-	if _, err := ev.Build(v, last.No, ch); err != nil {
+	if _, err := ev.Build(v, last.No, ch, ""); err != nil {
 		t.Errorf("final: %v", err)
 	}
 }

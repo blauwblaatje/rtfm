@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"crgformat"
+	"crgformat/crews"
 	"crgformat/replay"
 	"crgformat/rulesets"
 
@@ -49,6 +50,9 @@ type Config struct {
 	Fetch fixture.Fetch
 	// Logs: everything to logs/rtfm.log, and per tournament to logs/<id>.log.
 	Logs *logs.Logs
+	// Roster downloads WFTDA's roster of certified officials
+	// (fixture.FetchRoster, or a test's).
+	Roster func() ([]byte, error)
 }
 
 // Site serves RTFM.
@@ -59,6 +63,10 @@ type Site struct {
 
 	mu     sync.Mutex
 	events map[string]*fixture.Event
+
+	rosterMu sync.Mutex
+	roster   fixture.Roster // WFTDA's, as last downloaded
+	rosterAt time.Time
 }
 
 // New makes the site.
@@ -69,6 +77,9 @@ func New(cfg Config) (*Site, error) {
 	}
 	if cfg.Fetch == nil {
 		cfg.Fetch = fixture.FetchSheet
+	}
+	if cfg.Roster == nil {
+		cfg.Roster = fixture.FetchRoster
 	}
 	if cfg.Logs == nil {
 		cfg.Logs, _ = logs.Open("", os.Stderr)
@@ -101,6 +112,10 @@ func (s *Site) Handler() http.Handler {
 	mux.HandleFunc("GET /t/{id}/data.json", s.withEvent(s.data))
 	mux.HandleFunc("GET /t/{id}/game/{no}/{file}", s.withEvent(s.gameFile))
 	mux.HandleFunc("POST /t/{id}/all.zip", s.withEvent(s.all))
+	mux.HandleFunc("GET /t/{id}/crews", s.withEvent(s.getCrews))
+	mux.HandleFunc("PUT /t/{id}/crews", s.withEvent(s.putCrews))
+	mux.HandleFunc("POST /t/{id}/crews/roster", s.withEvent(s.fillFromRoster))
+	mux.HandleFunc("POST /t/{id}/crews/list", s.withEvent(s.fillFromList))
 	mux.HandleFunc("POST /log", s.clientLog)
 	mux.HandleFunc("POST /t/{id}/log", s.clientLog)
 	return s.logRequests(securityHeaders(mux))
@@ -363,7 +378,7 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 		v.Games = append(v.Games, GameView{No: g.No, Date: g.Date, Time: g.Time, Track: g.Track, Type: g.Type, Notes: g.Notes,
 			Sides: g.Sides, Fixed: g.Fixed, Default: g.Default})
 	}
-	for _, c := range ev.Crews {
+	for _, c := range ev.CrewList() {
 		cv := CrewView{ID: c.ID, Name: c.Name, Officials: len(c.Officials), Games: append([]string{}, c.Games...), Heads: []string{}}
 		for _, o := range c.Officials {
 			if o.Head {
@@ -510,11 +525,7 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 }
 
 func (s *Site) build(ev *fixture.Event, no int, ch fixture.Choice, rules string) (*replay.Summary, error) {
-	e := *ev // the ruleset for this download only
-	if rules != "" {
-		e.Ruleset = rules
-	}
-	return e.Build(s.v, no, ch)
+	return ev.Build(s.v, no, ch, rules)
 }
 
 // blanks are the blank statsbooks there are, by name.
@@ -541,6 +552,140 @@ func (s *Site) blank(name string) ([]byte, error) {
 		pick = name
 	}
 	return os.ReadFile(filepath.Join(s.cfg.Blank, pick+".xlsx"))
+}
+
+// --- crews ----------------------------------------------------------------------------
+
+// The roles an official can have on the IGRF (the CRG scoreboard's list).
+var officialRoles = []string{"Head Non-Skating Official", "Penalty Lineup Tracker", "Penalty Tracker", "Penalty Wrangler",
+	"Inside Whiteboard Operator", "Jam Timer", "Scorekeeper", "ScoreBoard Operator", "Penalty Box Manager", "Penalty Box Timer",
+	"Lineup Tracker", "Non-Skating Official Alternate", "Head Referee", "Inside Pack Referee", "Jammer Referee",
+	"Outside Pack Referee", "Referee Alternate"}
+
+// CrewsAnswer is the crews, with what a change did.
+type CrewsAnswer struct {
+	Crews  []*crews.Crew       `json:"crews"`
+	Roles  []string            `json:"roles"`
+	Report *fixture.FillReport `json:"report,omitempty"`
+}
+
+func (s *Site) getCrews(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
+	writeJSON(w, CrewsAnswer{Crews: ev.CrewList(), Roles: officialRoles})
+}
+
+// putCrews stores the crews as edited on the page.
+func (s *Site) putCrews(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
+	var cs []*crews.Crew
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&cs); err != nil {
+		http.Error(w, "crews: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	officials := 0
+	for _, c := range cs {
+		if c == nil {
+			http.Error(w, "crews: an empty crew", http.StatusBadRequest)
+			return
+		}
+		c.Name = strings.TrimSpace(c.Name)
+		if c.Name == "" {
+			c.Name = "Crew"
+		}
+		kept := c.Officials[:0]
+		for _, o := range c.Officials {
+			o.Name, o.Role = strings.TrimSpace(o.Name), strings.TrimSpace(o.Role)
+			o.League, o.Cert, o.Pronouns = strings.TrimSpace(o.League), strings.TrimSpace(o.Cert), strings.TrimSpace(o.Pronouns)
+			if o.Name == "" {
+				continue // an empty row
+			}
+			if !slices.Contains(officialRoles, o.Role) {
+				http.Error(w, fmt.Sprintf("%s: %q isn't a position on the IGRF", o.Name, o.Role), http.StatusBadRequest)
+				return
+			}
+			kept = append(kept, o)
+		}
+		c.Officials = kept
+		officials += len(kept)
+	}
+	ev.SetCrews(cs)
+	s.save(ev)
+	s.logf(ev.ID, "crews edited: %d crews, %d officials", len(cs), officials)
+	writeJSON(w, CrewsAnswer{Crews: ev.CrewList(), Roles: officialRoles})
+}
+
+// fillFromRoster fills in league, pronouns and certification from WFTDA's
+// roster of certified officials (downloaded at most every 6 hours), or
+// from the roster page uploaded as "file" (saved in a browser, when WFTDA's
+// site turns RTFM away).
+func (s *Site) fillFromRoster(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
+	var roster fixture.Roster
+	var err error
+	if f, _, ferr := r.FormFile("file"); ferr == nil {
+		defer f.Close()
+		page, rerr := io.ReadAll(io.LimitReader(f, 32<<20))
+		if roster, err = fixture.ParseRoster(page); rerr != nil {
+			err = rerr
+		}
+	} else {
+		roster, err = s.wftdaRoster(ev.ID)
+	}
+	if err != nil {
+		s.logf(ev.ID, "WFTDA roster: %v", err)
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	s.fill(w, r, ev, roster, "WFTDA's roster")
+}
+
+// fillFromList fills in from an uploaded list of officials (.xlsx or .csv).
+func (s *Site) fillFromList(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
+	f, h, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "choose the file with the officials", http.StatusBadRequest)
+		return
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, 32<<20))
+	var list fixture.Roster
+	if err == nil {
+		list, err = fixture.ReadOfficialsList(data)
+	}
+	if err != nil {
+		s.logf(ev.ID, "officials list %q: %v", h.Filename, err)
+		http.Error(w, h.Filename+": "+err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	s.fill(w, r, ev, list, fmt.Sprintf("the list %q (%d officials)", h.Filename, len(list)))
+}
+
+func (s *Site) fill(w http.ResponseWriter, r *http.Request, ev *fixture.Event, from fixture.Roster, what string) {
+	overwrite := r.FormValue("overwrite") == "1"
+	cs := ev.CrewList()
+	rep := fixture.Fill(cs, from, overwrite)
+	ev.SetCrews(cs)
+	s.save(ev)
+	s.logf(ev.ID, "crews filled in from %s (overwrite %v): %d officials, %d found, %d changed; not found: %s; name twice on it: %s", what, overwrite,
+		rep.Officials, rep.Matched, rep.Changed, strings.Join(rep.NotFound, ", "), strings.Join(rep.Twice, ", "))
+	writeJSON(w, CrewsAnswer{Crews: ev.CrewList(), Roles: officialRoles, Report: &rep})
+}
+
+func (s *Site) wftdaRoster(id string) (fixture.Roster, error) {
+	s.rosterMu.Lock()
+	defer s.rosterMu.Unlock()
+	if s.roster != nil && time.Since(s.rosterAt) < 6*time.Hour {
+		return s.roster, nil
+	}
+	start := time.Now()
+	page, err := s.cfg.Roster()
+	if err != nil {
+		return nil, err
+	}
+	roster, err := fixture.ParseRoster(page)
+	if err != nil {
+		return nil, err
+	}
+	s.logf(id, "WFTDA roster downloaded in %s: %d certified officials", time.Since(start).Round(time.Millisecond), len(roster))
+	s.roster, s.rosterAt = roster, time.Now()
+	return roster, nil
 }
 
 // --- keeping tournaments -------------------------------------------------------------

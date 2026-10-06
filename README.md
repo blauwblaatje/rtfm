@@ -12,6 +12,19 @@ makes each game as it is before the first whistle:
 - a **game file for the CRG scoreboard** (Java, v2025.10): Settings, Data
   Management, Import JSON. One file can hold every game.
 
+**Crews** can be edited on the tournament page: every official's position,
+name, pronouns, league affiliation, certification and head mark, and new
+officials and crews. League, pronouns and certification can be filled in
+from [WFTDA's roster of certified officials](https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/)
+(matched by name, ignoring case, accents and punctuation; Non-Skating levels
+for NSO positions, Skating levels for referees; a name that's on the roster
+twice is left for you), or from a list of your own: an .xlsx or .csv with a
+name column and league and/or certification columns, found by their
+headings. What's filled in already stays, unless you tick "replace". WFTDA's
+site sometimes turns automatic requests away: then save the roster page in
+a browser and upload it. The edits are kept with the tournament, so every
+download, and everyone who opens it, gets them.
+
 Games whose teams depend on results ("Winner Game 3") get a team picker;
 every game gets a crew picker, set to the crew the infopack assigned. The
 choices are kept in the browser. *Download all* gives a zip with a statsbook
@@ -27,6 +40,8 @@ The reading is the CRG Go rewrite's (`../crg-format`, vendored in
 | Sanctioning application | `tournament` | name, dates, venue, host league, teams with charter links, the schedule (date, time, track, home/away, colours, "Winner/Loser Game N") |
 | Charters | `library` | league, team, uniform colours; per skater number, name, pronouns, pronunciation, WUID. **Never legal names.** |
 | Infopack | `crews` | the crews: officials by position, heads, the games each crew is assigned. **Never contact details.** |
+| WFTDA's roster of certified officials | `internal/fixture` | per official league, pronouns, certifications |
+| A list of officials (.xlsx, .csv) | `internal/fixture` | name, league, certification, pronouns; **never a legal-name column** |
 | The game | `prepare` | its first events, as the scoreboard makes them |
 | Statsbook | `statsbook` | a WFTDA blank statsbook with the IGRF filled in |
 | CRG file | `javaws` | the Java scoreboard's keys, version v2025.10 |

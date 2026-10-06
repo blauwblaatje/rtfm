@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 
+	"crgformat/crews"
+
 	"rtfm/internal/fixture"
 	"rtfm/internal/logs"
 )
@@ -159,3 +161,88 @@ func TestChampionshipsSite(t *testing.T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// Crews: filled in from WFTDA's roster (and from a list), edited, and on
+// the IGRF of the games they officiate.
+func TestCrewsEditAndFill(t *testing.T) {
+	app, err := os.ReadFile(filepath.Join(testData, "sanctioning/2026-wftda-championships.xlsx"))
+	if err != nil {
+		t.Skip("no Championships application")
+	}
+	info, _ := os.ReadFile(filepath.Join(testData, "infopacks/champs-2026.xlsx"))
+	roster, _ := os.ReadFile("../fixture/testdata/wftda-roster.html")
+	lg, _ := logs.Open(t.TempDir(), nil)
+	asked := 0
+	site, _ := New(Config{Blank: filepath.Join(testData, "statsbooks/template"), Fetch: localSheets, Logs: lg,
+		Roster: func() ([]byte, error) { asked++; return roster, nil }})
+	ts := httptest.NewServer(site.Handler())
+	defer ts.Close()
+	ev, err := fixture.Load(app, info, localSheets, fixture.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	site.events[ev.ID] = ev
+	base := ts.URL + "/t/" + ev.ID
+
+	var ans CrewsAnswer
+	r, err := http.Post(base+"/crews/roster", "application/x-www-form-urlencoded", nil)
+	if err != nil || r.StatusCode != 200 {
+		t.Fatalf("roster: %v %v", err, r.Status)
+	}
+	json.NewDecoder(r.Body).Decode(&ans)
+	if ans.Report == nil || ans.Report.Matched < 46 || asked != 1 {
+		t.Fatalf("report %+v, asked %d", ans.Report, asked)
+	}
+	http.Post(base+"/crews/roster", "application/x-www-form-urlencoded", nil)
+	if asked != 1 {
+		t.Error("the roster was downloaded again within the hour")
+	}
+	// A list for the rest, and an edit by hand.
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("file", "officials.csv")
+	io.WriteString(fw, "Name,League,Certification\nspike,Rat City Roller Derby,Non-Skating Level 1\n")
+	mw.Close()
+	r, _ = http.Post(base+"/crews/list", mw.FormDataContentType(), &body)
+	ans = CrewsAnswer{}
+	json.NewDecoder(r.Body).Decode(&ans)
+	if ans.Report == nil || ans.Report.Matched != 1 {
+		t.Fatalf("list: %+v", ans.Report)
+	}
+	cs := ans.Crews
+	cs[0].Officials[0].League = "Edited League"
+	cs[0].Officials = append(cs[0].Officials, crews.Official{Name: " ", Role: "Jam Timer"}) // an empty row: dropped
+	b, _ := json.Marshal(cs)
+	req, _ := http.NewRequest("PUT", base+"/crews", bytes.NewReader(b))
+	r, _ = http.DefaultClient.Do(req)
+	if r.StatusCode != 200 {
+		t.Fatalf("put: %s", r.Status)
+	}
+	// Game 1's crew in the game file, with the league from the roster.
+	var v EventView
+	rr, _ := http.Get(base + "/data.json")
+	json.NewDecoder(rr.Body).Decode(&v)
+	g1 := v.Games[0]
+	sum, err := ev.Build(site.v, 1, g1.Default, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withLeague, edited := 0, false
+	for _, o := range sum.Officials {
+		if o.League != "" && o.Cert != "" {
+			withLeague++
+		}
+		edited = edited || o.League == "Edited League"
+	}
+	// Crew Divide by Zero: 9 of its 17 are on the roster.
+	if withLeague < 9 || !edited || g1.Default.Crew != cs[0].ID {
+		t.Errorf("game 1 (crew %s): %d of %d officials with league and certification, edit there: %v", g1.Default.Crew, withLeague, len(sum.Officials), edited)
+	}
+	// A position that isn't on the IGRF is refused.
+	cs[0].Officials[0].Role = "Mascot"
+	b, _ = json.Marshal(cs)
+	req, _ = http.NewRequest("PUT", base+"/crews", bytes.NewReader(b))
+	if r, _ = http.DefaultClient.Do(req); r.StatusCode != http.StatusBadRequest {
+		t.Errorf("a mascot: %s", r.Status)
+	}
+}
