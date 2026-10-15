@@ -14,7 +14,8 @@ makes each game as it is before the first whistle:
 
 **Crews** can be edited on the tournament page: every official's position,
 name, pronouns, league affiliation, certification and head mark, and new
-officials and crews. League, pronouns and certification can be filled in
+officials and crews; one crew at a time, a tab per crew (its number: the
+officials still without league or certification). League, pronouns and certification can be filled in
 from [WFTDA's roster of certified officials](https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/)
 (matched by name, ignoring case, accents and punctuation; one certification
 per official, as the IGRF's field has room for one: the highest Non-Skating
@@ -29,8 +30,39 @@ download, and everyone who opens it, gets them.
 Games whose teams depend on results ("Winner Game 3") get a team picker;
 every game gets a crew picker, set to the crew the infopack assigned (by
 the teams' names, "WG1" for "Winner Game 1", or the game's number). The
-choices are kept in the browser. *Download all* gives a zip with a statsbook
-per game whose teams are known, and one CRG file with all of them.
+choices are kept with the tournament, for everyone who opens it (choices a
+browser kept from before go up once). An open page asks the server every 30
+seconds while it's in view, so what other organisers and the teams change
+shows up by itself (not while you're typing or picking in it); a change
+sends only the field changed, so it doesn't undo someone else's change to
+the same game. Crews show others' changes while you have none unsaved; a
+crew save still saves all crews as your page has them. *Download all* gives a zip with a
+statsbook per game whose teams are known, and one CRG file with all of them.
+Tabs above the schedule show one day's games; the zip then holds only
+those, named after the day. The tab is in the address
+(`/t/<id>#day=2026-10-15`), so a link can go straight to it.
+
+**Team links.** Every team gets its own link (`/team/<secret>`, under
+*Teams and charters*: copy it, or make a new one, which shuts the old one
+out). It shows the team's games: on the schedule, and bracket games once
+the organiser picked the team for them. Per game the team ticks the skaters
+who play (from its charter, at most 15) and picks a captain among them; the
+home team, the higher seed, also picks its bench and uniform colour. The
+game's statsbook and CRG file then have every skater of the charter, the
+ones not playing crossed out on the IGRF (Not Skating on the scoreboard),
+the captain flagged, and the home team's colour unless the organiser typed
+another. The team page keeps up by itself too, without touching a game
+with changes not saved yet. The benches aren't on the IGRF: the tournament page shows each
+side's bench and line-up under its name, and the zip's README lists them.
+The link doesn't say which tournament it is, so a team can't get to the
+organisers' page from it, and it's kept out of the logs (`/team/<link>`).
+
+Under *Line-ups: benches and deadline* the organiser names the two benches
+(default "Pivot line" and "Jam line"; renaming them renames the picks too),
+sets how long before a game its line-ups close (default 2 hours) and the
+venue's time zone (guessed from its country). Under each game's time a
+picker opens or closes its line-ups whatever the deadline, or puts them
+back on it.
 
 ## How it reads the sheets
 
@@ -66,7 +98,7 @@ Settings (flags or environment):
 | `-addr` | `RTFM_ADDR` | `:4200` | where to listen |
 | `-blank` | `RTFM_BLANK` | `blank` | folder with WFTDA's blank statsbooks; each `.xlsx` is offered by file name (A4, US Letter) |
 | `-logs` | `RTFM_LOGS` | `logs` | log folder, see below |
-| `-data` | `RTFM_DATA` | | folder to keep loaded tournaments in; empty keeps them in memory only |
+| `-data` | `RTFM_DATA` | `data` | folder to keep loaded tournaments in, with everything picked and edited, written as it happens (a whole file or the one before, also on a crash); `-data=` keeps them in memory only, gone on a restart |
 | `-keep` | `RTFM_KEEP` | `1440h` | how long a loaded tournament is kept (60 days) |
 
 **Logs.** Everything goes to `logs/rtfm.log` (and standard error); what

@@ -63,6 +63,9 @@ type Site struct {
 
 	mu     sync.Mutex
 	events map[string]*fixture.Event
+	links  map[string]string // a team link's token -> its tournament's id
+
+	saveMu sync.Mutex // tournaments being written to disk
 
 	rosterMu sync.Mutex
 	roster   fixture.Roster // WFTDA's, as last downloaded
@@ -91,13 +94,54 @@ func New(cfg Config) (*Site, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Site{cfg: cfg, v: v, tmpl: tmpl, events: map[string]*fixture.Event{}}
+	s := &Site{cfg: cfg, v: v, tmpl: tmpl, events: map[string]*fixture.Event{}, links: map[string]string{}}
 	if cfg.Data != "" {
 		if err := os.MkdirAll(cfg.Data, 0o755); err != nil {
 			return nil, err
 		}
+		// What a crash left halfway: the tournament before it is still there.
+		left, _ := filepath.Glob(filepath.Join(cfg.Data, "*.tmp"))
+		for _, f := range left {
+			os.Remove(f)
+		}
+		s.indexLinks()
 	}
 	return s, nil
+}
+
+// indexLinks finds the team links of the tournaments kept on disk, so a
+// team's link works after a restart.
+func (s *Site) indexLinks() {
+	list, _ := filepath.Glob(filepath.Join(s.cfg.Data, "*.json"))
+	for _, f := range list {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var ev struct {
+			ID    string         `json:"id"`
+			Links map[int]string `json:"links"`
+		}
+		if json.Unmarshal(data, &ev) != nil || !idRe.MatchString(ev.ID) {
+			continue
+		}
+		for _, token := range ev.Links {
+			s.links[token] = ev.ID
+		}
+	}
+}
+
+// linked gives a tournament's teams links (one loaded before there were
+// any), keeps it if that made any, and knows them.
+func (s *Site) linked(ev *fixture.Event) {
+	if ev.EnsureLinks() {
+		s.save(ev)
+	}
+	s.mu.Lock()
+	for _, token := range ev.TeamLinks() {
+		s.links[token] = ev.ID
+	}
+	s.mu.Unlock()
 }
 
 // Handler is the site's HTTP handler.
@@ -112,12 +156,22 @@ func (s *Site) Handler() http.Handler {
 	mux.HandleFunc("GET /t/{id}/data.json", s.withEvent(s.data))
 	mux.HandleFunc("GET /t/{id}/game/{no}/{file}", s.withEvent(s.gameFile))
 	mux.HandleFunc("POST /t/{id}/all.zip", s.withEvent(s.all))
+	mux.HandleFunc("PUT /t/{id}/games/{no}", s.withEvent(s.putChoice))
+	mux.HandleFunc("PATCH /t/{id}/games/{no}", s.withEvent(s.patchChoice))
+	mux.HandleFunc("PUT /t/{id}/games/{no}/lineups", s.withEvent(s.putLineupMode))
+	mux.HandleFunc("PUT /t/{id}/settings", s.withEvent(s.putSettings))
+	mux.HandleFunc("DELETE /t/{id}/games", s.withEvent(s.clearChoices))
+	mux.HandleFunc("POST /t/{id}/teams/{no}/link", s.withEvent(s.newLink))
 	mux.HandleFunc("GET /t/{id}/crews", s.withEvent(s.getCrews))
 	mux.HandleFunc("PUT /t/{id}/crews", s.withEvent(s.putCrews))
 	mux.HandleFunc("POST /t/{id}/crews/roster", s.withEvent(s.fillFromRoster))
 	mux.HandleFunc("POST /t/{id}/crews/list", s.withEvent(s.fillFromList))
 	mux.HandleFunc("POST /log", s.clientLog)
 	mux.HandleFunc("POST /t/{id}/log", s.clientLog)
+	mux.HandleFunc("GET /team/{token}", s.withTeam(s.teamPage))
+	mux.HandleFunc("GET /team/{token}/data.json", s.withTeam(s.teamData))
+	mux.HandleFunc("PUT /team/{token}/game/{no}", s.withTeam(s.putLineup))
+	mux.HandleFunc("POST /team/{token}/log", s.withTeam(s.teamLog))
 	return s.logRequests(securityHeaders(mux))
 }
 
@@ -134,11 +188,17 @@ func (s *Site) logRequests(h http.Handler) http.Handler {
 		if r.URL.Path == "/healthz" || strings.HasPrefix(r.URL.Path, "/static/") && rec.status < 400 {
 			return
 		}
-		id := ""
+		id, uri := "", r.URL.RequestURI()
 		if m := pathID.FindStringSubmatch(r.URL.Path); m != nil {
 			id = m[1]
 		}
-		msg := fmt.Sprintf("%s %s %d %s %dB", r.Method, r.URL.RequestURI(), rec.status, time.Since(start).Round(time.Millisecond), rec.size)
+		if m := teamPath.FindStringSubmatch(r.URL.Path); m != nil {
+			s.mu.Lock()
+			id = s.links[m[1]]
+			s.mu.Unlock()
+			uri = strings.Replace(uri, m[1], "<link>", 1) // the team's secret
+		}
+		msg := fmt.Sprintf("%s %s %d %s %dB", r.Method, uri, rec.status, time.Since(start).Round(time.Millisecond), rec.size)
 		if rec.status >= 400 && rec.errBody.Len() > 0 {
 			msg += ": " + strings.TrimSpace(rec.errBody.String())
 		}
@@ -172,6 +232,16 @@ func (r *recorder) Write(b []byte) (int, error) {
 // clientLog takes an error the page ran into in the browser, so it is in
 // the logs too.
 func (s *Site) clientLog(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !idRe.MatchString(id) {
+		id = ""
+	}
+	s.browserLog(w, r, id, "")
+}
+
+// browserLog logs an error a page ran into, for a tournament ("" for
+// none), from a team's page (team: its name) or the organisers'.
+func (s *Site) browserLog(w http.ResponseWriter, r *http.Request, id, team string) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 4096))
 	var e struct {
 		Message, Source, Stack, Page, Agent string
@@ -181,12 +251,12 @@ func (s *Site) clientLog(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad log", http.StatusBadRequest)
 		return
 	}
-	id := r.PathValue("id")
-	if !idRe.MatchString(id) {
-		id = ""
-	}
 	clean := func(s string) string { return strings.ReplaceAll(strings.ReplaceAll(s, "\r", " "), "\n", " | ") }
-	s.logf(id, "BROWSER ERROR on %s: %s (%s:%d:%d) stack: %s agent: %s", clean(e.Page), clean(e.Message), clean(e.Source),
+	page := clean(e.Page)
+	if team != "" {
+		page = "the team page of " + team // not its link: that's the team's secret
+	}
+	s.logf(id, "BROWSER ERROR on %s: %s (%s:%d:%d) stack: %s agent: %s", page, clean(e.Message), clean(e.Source),
 		e.Line, e.Column, clean(e.Stack), clean(e.Agent))
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -262,7 +332,7 @@ func (s *Site) load(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.events[ev.ID] = ev
 	s.mu.Unlock()
-	s.save(ev)
+	s.linked(ev)
 	s.logf(ev.ID, "loaded %q: %d teams, %d games, %d crews", ev.T.Name, len(ev.Teams), len(ev.T.Games), len(ev.Crews))
 	http.Redirect(w, r, "/t/"+ev.ID, http.StatusSeeOther)
 }
@@ -320,6 +390,7 @@ type EventView struct {
 	Java     string         `json:"java"`
 	Loaded   time.Time      `json:"loaded"`
 	Missing  map[int]string `json:"missing"`
+	Settings SettingsView   `json:"settings"`
 }
 
 // TeamView is a team with its charter.
@@ -330,6 +401,7 @@ type TeamView struct {
 	Skaters int      `json:"skaters"`
 	Colors  []string `json:"colors"`
 	Missing string   `json:"missing,omitempty"`
+	Link    string   `json:"link,omitempty"` // the team's own page: "/team/<token>"
 }
 
 // GameView is a game on the schedule.
@@ -343,6 +415,48 @@ type GameView struct {
 	Sides   [2]string      `json:"sides"`
 	Fixed   [2]bool        `json:"fixed"`
 	Default fixture.Choice `json:"default"`
+	Choice  fixture.Choice `json:"choice"` // what's used: the organiser's choice over the defaults
+	Stored  fixture.Choice `json:"stored"` // the organiser's choice, when Picked
+	Picked  bool           `json:"picked"`
+	Lineups [2]*LineupView `json:"lineups"` // what the teams said through their links
+	Benches [2]string      `json:"benches"` // each side's bench, once the home team picked
+	// Lineup is whether the teams can change their line-ups: Mode auto
+	// (until Closes, by the venue's clock), open or closed.
+	Lineup LineupStateView `json:"lineup"`
+}
+
+// LineupStateView is whether a game's line-ups can be changed.
+type LineupStateView struct {
+	Mode   string `json:"mode"`
+	Open   bool   `json:"open"`
+	Closes string `json:"closes,omitempty"`
+}
+
+// LineupView is what a team said about a game, in short.
+type LineupView struct {
+	Skaters int       `json:"skaters"`
+	Captain string    `json:"captain,omitempty"` // "Name #12"
+	Bench   string    `json:"bench,omitempty"`
+	Color   string    `json:"color,omitempty"`
+	Updated time.Time `json:"updated"`
+}
+
+func (s *Site) lineupView(ev *fixture.Event, team int, l *fixture.Lineup) *LineupView {
+	if l == nil {
+		return nil
+	}
+	v := &LineupView{Skaters: len(l.Skaters), Bench: l.Bench, Color: l.Color, Updated: l.Updated}
+	if l.Captain != "" {
+		v.Captain = "#" + l.Captain
+		if lt := ev.Teams[team]; lt != nil {
+			for _, sk := range lt.Skaters {
+				if strings.TrimSpace(sk.Number) == l.Captain {
+					v.Captain = strings.TrimSpace(sk.Name + " #" + l.Captain)
+				}
+			}
+		}
+	}
+	return v
 }
 
 // CrewView is a crew from the infopack.
@@ -358,15 +472,19 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	t := ev.T
 	v := EventView{ID: ev.ID, Name: t.Name, Dates: t.Dates, Venue: strings.Trim(strings.Join([]string{t.Venue.Name, t.Venue.City, t.Venue.Country}, ", "), ", "),
 		Host: t.HostLeague, Notes: append([]string{}, ev.Notes...), Java: fixture.JavaVersion, Loaded: ev.Loaded, Blanks: s.blanks(),
-		Missing: ev.Missing, Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}, Rulesets: []string{}}
+		Missing: ev.Missing, Settings: settingsView(ev), Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}, Rulesets: []string{}}
 	if v.Missing == nil {
 		v.Missing = map[int]string{}
 	}
 	for _, p := range rulesets.Presets {
 		v.Rulesets = append(v.Rulesets, p.Name)
 	}
+	links := ev.TeamLinks()
 	for _, tm := range t.Teams {
 		tv := TeamView{No: tm.No, Name: tm.Name, Missing: ev.Missing[tm.No], Colors: []string{}}
+		if token := links[tm.No]; token != "" {
+			tv.Link = "/team/" + token
+		}
 		if lt := ev.Teams[tm.No]; lt != nil {
 			tv.Charter = strings.Trim(lt.League+" - "+lt.TeamName, " -")
 			tv.Skaters = len(lt.Skaters)
@@ -375,8 +493,19 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 		v.Teams = append(v.Teams, tv)
 	}
 	for _, g := range ev.Games() {
-		v.Games = append(v.Games, GameView{No: g.No, Date: g.Date, Time: g.Time, Track: g.Track, Type: g.Type, Notes: g.Notes,
-			Sides: g.Sides, Fixed: g.Fixed, Default: g.Default})
+		gv := GameView{No: g.No, Date: g.Date, Time: g.Time, Track: g.Track, Type: g.Type, Notes: g.Notes,
+			Sides: g.Sides, Fixed: g.Fixed, Default: g.Default, Choice: g.Choice, Stored: g.Stored, Picked: g.Picked}
+		for i, l := range g.Lineups {
+			gv.Lineups[i] = s.lineupView(ev, g.Choice.Teams[i], l)
+		}
+		if l := g.Lineups[0]; l != nil && l.Bench != "" {
+			gv.Benches = [2]string{l.Bench, ev.OtherBench(l.Bench)}
+		}
+		gv.Lineup = LineupStateView{Mode: g.LineupState.Mode, Open: g.LineupState.Open}
+		if !g.LineupState.Closes.IsZero() {
+			gv.Lineup.Closes = ev.FormatTime(g.LineupState.Closes)
+		}
+		v.Games = append(v.Games, gv)
 	}
 	for _, c := range ev.CrewList() {
 		cv := CrewView{ID: c.ID, Name: c.Name, Officials: len(c.Officials), Games: append([]string{}, c.Games...), Heads: []string{}}
@@ -392,21 +521,32 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 
 // --- downloads -----------------------------------------------------------------------
 
-// choice reads a game's choices from a query: t1, t2 (team numbers), c1,
-// c2 (uniform colours), crew.
-func choice(q map[string][]string) fixture.Choice {
-	get := func(k string) string {
-		if v := q[k]; len(v) > 0 {
-			return v[0]
-		}
-		return ""
-	}
+// choice is how a game is made: as chosen on the tournament page, or as a
+// query says (t1, t2: team numbers; c1, c2: uniform colours; crew).
+func choice(ev *fixture.Event, no int, q url.Values) fixture.Choice {
 	var ch fixture.Choice
-	ch.Teams[0], _ = strconv.Atoi(get("t1"))
-	ch.Teams[1], _ = strconv.Atoi(get("t2"))
-	ch.Colors = [2]string{get("c1"), get("c2")}
-	ch.Crew = get("crew")
+	for _, g := range ev.Games() {
+		if g.No == no {
+			ch = g.Choice
+		}
+	}
+	if !q.Has("t1") {
+		return ch
+	}
+	ch.Teams[0], _ = strconv.Atoi(q.Get("t1"))
+	ch.Teams[1], _ = strconv.Atoi(q.Get("t2"))
+	ch.Colors = [2]string{q.Get("c1"), q.Get("c2")}
+	ch.Crew = q.Get("crew")
 	return ch
+}
+
+// effective are every game's choices, by number.
+func effective(ev *fixture.Event) map[int]fixture.Choice {
+	out := map[int]fixture.Choice{}
+	for _, g := range ev.Games() {
+		out[g.No] = g.Choice
+	}
+	return out
 }
 
 var fileRe = regexp.MustCompile(`^(statsbook\.xlsx|java\.json)$`)
@@ -419,7 +559,7 @@ func (s *Site) gameFile(w http.ResponseWriter, r *http.Request, ev *fixture.Even
 		return
 	}
 	q := r.URL.Query()
-	ch := choice(q)
+	ch := choice(ev, no, q)
 	sum, err := s.build(ev, no, ch, q.Get("rules"))
 	if err != nil {
 		s.logf(ev.ID, "game %d %s: can't make it (teams %v, colours %q, crew %q): %v", no, file, ch.Teams, ch.Colors, ch.Crew, err)
@@ -456,22 +596,30 @@ func (s *Site) gameFile(w http.ResponseWriter, r *http.Request, ev *fixture.Even
 }
 
 // all is every game whose teams are known, in one zip: the statsbooks and
-// one Java scoreboard file with all the games. The form has "choices": a
-// JSON map from game number to its choice, and "rules" and "paper".
+// one Java scoreboard file with all the games, as chosen on the tournament
+// page. The form has "rules" and "paper".
 func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	choices := map[string]fixture.Choice{}
-	if err := json.Unmarshal([]byte(r.FormValue("choices")), &choices); err != nil {
-		s.logf(ev.ID, "all.zip: choices %q: %v", r.FormValue("choices"), err)
-		http.Error(w, "choices: "+err.Error(), http.StatusBadRequest)
-		return
-	}
+	choices := effective(ev)
 	blank, blankErr := s.blank(r.FormValue("paper"))
 	files := map[string][]byte{}
 	var sums []*replay.Summary
 	var skipped []string
+	// games: the page's tab (a day, a crew), as "1,2,5"; empty is all. label
+	// names them, in the zip's name and README.
+	only := map[int]bool{}
+	for _, f := range strings.Split(r.FormValue("games"), ",") {
+		if no, err := strconv.Atoi(strings.TrimSpace(f)); err == nil {
+			only[no] = true
+		}
+	}
+	label := strings.TrimSpace(r.FormValue("label"))
+	in := func(no int) bool { return len(only) == 0 || only[no] }
 	for _, g := range ev.T.Games {
-		ch, ok := choices[strconv.Itoa(g.No)]
+		if !in(g.No) {
+			continue
+		}
+		ch, ok := choices[g.No]
 		if !ok || ch.Teams[0] == 0 || ch.Teams[1] == 0 {
 			skipped = append(skipped, fmt.Sprintf("game %d: teams not picked yet", g.No))
 			continue
@@ -493,7 +641,7 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 		}
 	}
 	if len(sums) == 0 {
-		http.Error(w, "no game has both teams picked", http.StatusUnprocessableEntity)
+		http.Error(w, "no game "+cmp.Or(label, "here")+" has both teams picked", http.StatusUnprocessableEntity)
 		return
 	}
 	java, err := fixture.JavaGames(sums...)
@@ -505,10 +653,29 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	if blankErr != nil {
 		skipped = append(skipped, "statsbooks: "+blankErr.Error())
 	}
+	title := ev.T.Name
+	if label != "" {
+		title += ": " + label
+	}
 	readme := fmt.Sprintf("%s\n\nMade by RTFM (Roller derby Tournament Fixture Maker) on %s.\n\n"+
 		"statsbooks/: a WFTDA statsbook per game with the IGRF filled in.\n"+
 		"crg-games-*.json: all %d games for the CRG scoreboard %s: Data Management (Settings), Import JSON.\n",
-		ev.T.Name, time.Now().UTC().Format("2006-01-02 15:04 UTC"), len(sums), fixture.JavaVersion)
+		title, time.Now().UTC().Format("2006-01-02 15:04 UTC"), len(sums), fixture.JavaVersion)
+	var benches []string
+	for _, g := range ev.Games() {
+		if l := g.Lineups[0]; l != nil && l.Bench != "" && in(g.No) {
+			name := func(side int) string {
+				if tm := ev.T.TeamByNo(g.Choice.Teams[side]); tm != nil {
+					return tm.Name
+				}
+				return g.Sides[side]
+			}
+			benches = append(benches, fmt.Sprintf("game %d: %s on the %s bench, %s on the %s bench", g.No, name(0), l.Bench, name(1), ev.OtherBench(l.Bench)))
+		}
+	}
+	if len(benches) > 0 {
+		readme += "\nBenches, as the home teams picked them:\n- " + strings.Join(benches, "\n- ") + "\n"
+	}
 	if len(skipped) > 0 {
 		readme += "\nLeft out:\n- " + strings.Join(skipped, "\n- ") + "\n"
 	}
@@ -518,9 +685,9 @@ func (s *Site) all(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	s.logf(ev.ID, "all.zip: %d games, %d files; left out: %s", len(sums), len(files), cmp.Or(strings.Join(skipped, "; "), "nothing"))
+	s.logf(ev.ID, "all.zip%s: %d games, %d files; left out: %s", strings.TrimSuffix(" ("+label+")", " ()"), len(sums), len(files), cmp.Or(strings.Join(skipped, "; "), "nothing"))
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fixture.Slug(ev.T.Name)+".zip"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fixture.Slug(title)+".zip"))
 	w.Write(data)
 }
 
@@ -709,6 +876,7 @@ func (s *Site) event(id string) *fixture.Event {
 			s.mu.Lock()
 			s.events[id] = ev
 			s.mu.Unlock()
+			s.linked(ev)
 		}
 	}
 	if ev != nil && time.Since(ev.Loaded) > s.cfg.Keep {
@@ -717,17 +885,45 @@ func (s *Site) event(id string) *fixture.Event {
 	return ev
 }
 
+// save keeps a tournament on disk, whole or not at all: it's written to a
+// file of its own next to it, and that takes the old one's place only once
+// it's all on disk. A crash halfway leaves the one before.
 func (s *Site) save(ev *fixture.Event) {
 	if s.cfg.Data == "" {
 		return
 	}
-	data, err := json.Marshal(ev)
-	if err == nil {
-		err = os.WriteFile(filepath.Join(s.cfg.Data, ev.ID+".json"), data, 0o644)
-	}
-	if err != nil {
+	s.saveMu.Lock() // one at a time: the last change is what stays
+	defer s.saveMu.Unlock()
+	if err := s.writeEvent(ev); err != nil {
 		s.logf(ev.ID, "keeping it on disk: %v", err)
 	}
+}
+
+func (s *Site) writeEvent(ev *fixture.Event) error {
+	data, err := json.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(s.cfg.Data, ev.ID+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name()) // gone once renamed; else what's left of it
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(f.Name(), 0o644); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), filepath.Join(s.cfg.Data, ev.ID+".json"))
 }
 
 // Clean forgets tournaments older than Keep, in memory and on disk.

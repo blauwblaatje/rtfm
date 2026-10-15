@@ -2079,6 +2079,36 @@
       "additionalProperties": false
     },
     {
+      "title": "BoxTripAssigned",
+      "type": "object",
+      "required": [
+        "v",
+        "seq",
+        "t",
+        "type",
+        "boxTrip",
+        "position"
+      ],
+      "properties": {
+        "v": {},
+        "seq": {},
+        "t": {},
+        "type": {
+          "const": "BoxTripAssigned"
+        },
+        "pc": {},
+        "jc": {},
+        "src": {},
+        "boxTrip": {
+          "$ref": "#/$defs/id"
+        },
+        "position": {
+          "$ref": "#/$defs/position"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "title": "BoxTripReopened",
       "type": "object",
       "required": [

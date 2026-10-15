@@ -342,6 +342,7 @@ expulsion of that staff member was issued for.
 | `BoxTripEnded` | `boxTrip`, `jam`, `betweenJams`, `afterStarPass`, `duration?` | `pc`, `jc` | box clock expiry / release |
 | `BoxTripMoved` | `boxTrip`, `start?`, `end?` (each `{jam, betweenJams, afterStarPass}`) | | `BoxTrip.StartEarlier/StartLater/EndEarlier/EndLater` |
 | `BoxTripReopened` | `boxTrip` | | `Fielding.UnendBoxTrip` |
+| `BoxTripAssigned` | `boxTrip`, `position` | the trip's `position` in its start jam, when the box timer learns who sat ("Blocker Sat Down" before knowing which); a trip without `skater` takes the skater at that position | `BoxTrip.CurrentFielding` |
 | `BoxTripDeleted` | `boxTrip` | | `BoxTrip.Delete` |
 | `BoxTripPenaltyLinked` | `boxTrip`, `penalty`, `value` | | `BoxTrip.Penalty` |
 | `BoxTripShortened` | `boxTrip`, `amount`, `time?` | | `BoxTrip.Shortened`: how many of the trip's penalties were shortened by a jammer swap, and (`time`, ms) how much box time that took off in total |
@@ -361,6 +362,12 @@ and the lineup sheet:
 substitute when one serves for an injured, fouled-out or expelled skater
 (Rules 4.4.3, 4.5). The lineup symbols of the start jam go on `position`; later
 jams on wherever `skater` is fielded.
+A trip may start without `skater` (the box timer knows "the pivot sat down",
+not yet who): the first `FieldingSet` that puts a skater at `position` in the
+start jam makes that skater the trip's `skater` too, as in Java, where a box
+trip belongs to its fielding. A trip may also start without `position`
+(Java's "Blocker Sat Down"); `BoxTripAssigned` gives it one later. (Not a `FieldingSet` with `boxTrip`: that is a
+substitute.)
 
 `duration` is the penalty time served, if the box timer recorded it. Penalty
 time only runs during jams (Rules 4.4), so without that it follows from the

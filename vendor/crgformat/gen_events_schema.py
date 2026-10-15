@@ -74,6 +74,7 @@ EVENTS = {
                        {"skater": R("id"), "position": R("position")}, ["pc", "jc"]),
     "BoxTripEnded": ({"boxTrip": R("id"), "jam": R("id"), "betweenJams": B, "afterStarPass": B}, {"duration": MS}, ["pc", "jc"]),
     "BoxTripMoved": ({"boxTrip": R("id")}, {"start": R("boxPoint"), "end": R("boxPoint")}, []),
+    "BoxTripAssigned": ({"boxTrip": R("id"), "position": R("position")}, {}, []),
     "BoxTripReopened": ({"boxTrip": R("id")}, {}, []),
     "BoxTripDeleted": ({"boxTrip": R("id")}, {}, []),
     "BoxTripPenaltyLinked": ({"boxTrip": R("id"), "penalty": R("id"), "value": B}, {}, []),

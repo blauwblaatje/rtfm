@@ -71,6 +71,8 @@ type exporter struct {
 	// Official names for sheet headers, per period and team.
 	sk, jr, lt [2][2]string
 	pt         string
+
+	struck map[int]int // a cell style -> the same, crossed out
 }
 
 func (x *exporter) warnf(format string, a ...any) {
@@ -84,6 +86,35 @@ func (x *exporter) str(sheet string, col, row int, v string) {
 		return
 	}
 	if err := x.f.SetCellStr(sheet, cellName(col, row), v); err != nil {
+		x.errs = append(x.errs, err)
+	}
+}
+
+// strike crosses a cell's text out, keeping the rest of its style.
+func (x *exporter) strike(sheet string, col, row int) {
+	cell := cellName(col, row)
+	id, err := x.f.GetCellStyle(sheet, cell)
+	if err == nil {
+		if x.struck == nil {
+			x.struck = map[int]int{}
+		}
+		struck, ok := x.struck[id]
+		if !ok {
+			var st *excelize.Style
+			if st, err = x.f.GetStyle(id); err == nil {
+				if st.Font == nil {
+					st.Font = &excelize.Font{}
+				}
+				st.Font.Strike = true
+				struck, err = x.f.NewStyle(st)
+				x.struck[id] = struck
+			}
+		}
+		if err == nil {
+			err = x.f.SetCellStyle(sheet, cell, cell, struck)
+		}
+	}
+	if err != nil {
 		x.errs = append(x.errs, err)
 	}
 }
@@ -255,7 +286,17 @@ func (x *exporter) igrf() {
 				break
 			}
 			num := sk.Number
-			if sk.Status == "notInGame" || slices.Contains(strings.Fields(sk.Flags), "ALT") {
+			notSkating := sk.Status == "notInGame" || slices.Contains(strings.Fields(sk.Flags), "ALT")
+			if notSkating && x.s.State == "prepared" {
+				// Before the game: on the charter, not on this game's
+				// roster. Crossed out, as on a paper IGRF.
+				x.str(sheetIGRF, col, row, num)
+				x.str(sheetIGRF, col+1, row, sk.Name)
+				x.strike(sheetIGRF, col, row)
+				x.strike(sheetIGRF, col+1, row)
+				continue
+			}
+			if notSkating {
 				num += "*" // StatsBook Manual: an asterisk marks a skater who didn't skate
 			}
 			x.str(sheetIGRF, col, row, num)
@@ -307,7 +348,9 @@ func (x *exporter) igrf() {
 		x.str(sheetIGRF, igrfSuspension.col, igrfSuspension.row, yesNo(suspension))
 	}
 	// The 2025 template says "Official Reviews", the 2019 one "Offical Reviews".
-	if label, _ := x.f.GetCellValue(sheetIGRF, igrfReviewsLabel.cell()); strings.HasPrefix(label, "Offic") {
+	// Before the game nobody knows yet: the blank's "YES  |  NO" stays, for
+	// whoever fills in the IGRF afterwards.
+	if label, _ := x.f.GetCellValue(sheetIGRF, igrfReviewsLabel.cell()); strings.HasPrefix(label, "Offic") && x.s.State != "prepared" {
 		reviews := false
 		for _, p := range x.s.Periods {
 			for _, to := range p.Timeouts {

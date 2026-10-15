@@ -152,6 +152,17 @@ func (r *reader) cell(sheet string, col, row int) string {
 	return strings.TrimSpace(v)
 }
 
+// struck says a cell's text is crossed out (a skater not on the game's
+// roster).
+func (r *reader) struck(sheet string, col, row int) bool {
+	id, err := r.f.GetCellStyle(sheet, cellName(col, row))
+	if err != nil {
+		return false
+	}
+	st, err := r.f.GetStyle(id)
+	return err == nil && st.Font != nil && st.Font.Strike
+}
+
 func (r *reader) formula(sheet string, col, row int) string {
 	fm, _ := r.f.GetCellFormula(sheet, cellName(col, row))
 	return strings.TrimPrefix(strings.TrimSpace(fm), "=")
@@ -264,7 +275,7 @@ func (r *reader) readIGRF() {
 				continue
 			}
 			t.roster = append(t.roster, rosterEntry{number: number(raw), name: r.cell(sheetIGRF, col+1, row),
-				notInGame: strings.HasSuffix(raw, "*")})
+				notInGame: strings.HasSuffix(raw, "*") || r.struck(sheetIGRF, col, row)})
 		}
 		t.captain = r.cell(sheetIGRF, col, igrfCaptains)
 	}

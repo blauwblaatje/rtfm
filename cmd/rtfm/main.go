@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+	_ "time/tzdata" // the venues' time zones, also in a container without them
 
 	"rtfm/internal/logs"
 	"rtfm/internal/web"
@@ -29,7 +30,7 @@ func main() {
 	addr := flag.String("addr", cmp.Or(os.Getenv("RTFM_ADDR"), ":4200"), "address to listen on (RTFM_ADDR)")
 	blank := flag.String("blank", cmp.Or(os.Getenv("RTFM_BLANK"), "blank"), "folder with WFTDA's blank statsbooks, .xlsx (RTFM_BLANK)")
 	logDir := flag.String("logs", cmp.Or(os.Getenv("RTFM_LOGS"), "logs"), "log folder: rtfm.log, and <id>.log per tournament (RTFM_LOGS)")
-	data := flag.String("data", os.Getenv("RTFM_DATA"), "folder to keep loaded tournaments in; empty: memory only (RTFM_DATA)")
+	data := flag.String("data", cmp.Or(os.Getenv("RTFM_DATA"), "data"), "folder to keep loaded tournaments in; -data= keeps them in memory only, gone on a restart (RTFM_DATA)")
 	keep := flag.Duration("keep", envDuration("RTFM_KEEP", 60*24*time.Hour), "how long a loaded tournament is kept (RTFM_KEEP)")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	health := flag.Bool("health", false, "check that the rtfm on -addr answers, exit 0 if so (the container's health check)")
@@ -79,6 +80,9 @@ func main() {
 	}()
 	blanks, _ := filepath.Glob(filepath.Join(*blank, "*.xlsx"))
 	lg.Printf("", "rtfm %s: listening on %s; %d blank statsbooks in %q, tournaments kept in %q, logs in %q", version, *addr, len(blanks), *blank, *data, *logDir)
+	if *data == "" {
+		lg.Printf("", "WARNING: -data is empty: tournaments are kept in memory only, and gone on a restart")
+	}
 	if len(blanks) == 0 {
 		lg.Printf("", "WARNING: no blank statsbook in %q: statsbook downloads won't work (set -blank or RTFM_BLANK)", *blank)
 	}

@@ -88,8 +88,23 @@ type Event struct {
 	Crews   []*crews.Crew          `json:"crews"`
 	Notes   []string               `json:"notes"`
 	Ruleset string                 `json:"ruleset"` // a preset's name
+	// Choices are the organiser's, by game number; a game without one has
+	// its defaults.
+	Choices map[int]Choice `json:"choices,omitempty"`
+	// Links are the teams' own links' secrets, by team number, and Lineups
+	// what they said through them ("game/team").
+	Links   map[int]string     `json:"links,omitempty"`
+	Lineups map[string]*Lineup `json:"lineups,omitempty"`
+	// Settings are the organiser's for the line-ups, and LineupModes the
+	// games whose line-ups the organiser opened or closed, whatever the
+	// deadline.
+	Settings    Settings       `json:"settings"`
+	LineupModes map[int]string `json:"lineupModes,omitempty"`
 
-	mu sync.RWMutex // Crews, which can be edited while games are made
+	mu sync.RWMutex // Crews, Choices, Links, Lineups, Settings, LineupModes: edited while games are made
+	// choiceMu keeps a change to a game's choice whole: read, changed,
+	// stored, without another in between.
+	choiceMu sync.Mutex
 }
 
 // Options are how Load runs: the tournament's id ("" makes one) and where
@@ -193,12 +208,28 @@ type GameView struct {
 	tournament.Game
 	Sides   [2]string `json:"sides"`   // the team's name, or "Winner Game 1"
 	Fixed   [2]bool   `json:"fixed"`   // the team is on the schedule
-	Default Choice    `json:"default"` // fixed teams, schedule or charter colours, the infopack's crew
+	Default Choice    `json:"default"` // fixed teams, the home team's or schedule's or charter's colours, the infopack's crew
+	// Choice is how the game is made: the organiser's choice (Stored, when
+	// Picked) over the defaults.
+	Choice Choice `json:"choice"`
+	Stored Choice `json:"stored"`
+	Picked bool   `json:"picked"`
+	// Lineups are what the teams of Choice said through their links, and
+	// LineupState whether they can still change them.
+	Lineups     [2]*Lineup  `json:"lineups"`
+	LineupState LineupState `json:"lineupState"`
 }
 
 // Games are the games on the schedule.
 func (ev *Event) Games() []GameView {
+	ev.mu.RLock()
+	stored := make(map[int]Choice, len(ev.Choices))
+	for k, v := range ev.Choices {
+		stored[k] = v
+	}
+	ev.mu.RUnlock()
 	var out []GameView
+	now := time.Now()
 	for _, g := range ev.T.Games {
 		v := GameView{Game: g}
 		for i, slot := range []tournament.Slot{g.Home, g.Away} {
@@ -210,14 +241,45 @@ func (ev *Event) Games() []GameView {
 					v.Sides[i] = tm.Name
 				}
 			}
-			v.Default.Colors[i] = ev.color(v.Default.Teams[i], slot.Color, i)
+			v.Default.Colors[i] = ev.gameColor(g, i, v.Default.Teams[i])
 		}
 		if c := ev.crewFor(g, v.Default.Teams); c != nil {
 			v.Default.Crew = c.ID
 		}
+		v.Choice = v.Default
+		v.Stored, v.Picked = stored[g.No]
+		if v.Picked {
+			v.Choice.Crew = v.Stored.Crew
+			for i := range v.Choice.Teams {
+				if !v.Fixed[i] {
+					v.Choice.Teams[i] = v.Stored.Teams[i]
+				}
+				v.Choice.Colors[i] = cmp.Or(v.Stored.Colors[i], ev.gameColor(g, i, v.Choice.Teams[i]))
+			}
+		}
+		for i, team := range v.Choice.Teams {
+			v.Lineups[i] = ev.Lineup(g.No, team)
+		}
+		v.LineupState = ev.LineupState(g.No, now)
 		out = append(out, v)
 	}
 	return out
+}
+
+// gameColor is a team's uniform colour for a game when the organiser
+// hasn't picked one: the home team's pick through its link, else the
+// schedule's, else the charter's.
+func (ev *Event) gameColor(g tournament.Game, side, team int) string {
+	if side == 0 {
+		if l := ev.Lineup(g.No, team); l != nil && l.Color != "" {
+			return l.Color
+		}
+	}
+	slot := g.Home
+	if side == 1 {
+		slot = g.Away
+	}
+	return ev.color(team, slot.Color, side)
 }
 
 // color is a team's uniform colour for a game: the schedule's (its
@@ -390,7 +452,8 @@ func (ev *Event) Build(v *crgformat.Validators, no int, ch Choice, ruleset strin
 			}
 			return nil, fmt.Errorf("game %d: no charter for team %d (%s)", g.No, no, ev.Missing[no])
 		}
-		gt := lt.GameTeam(ch.Colors[i])
+		color := cmp.Or(strings.TrimSpace(ch.Colors[i]), ev.gameColor(*g, i, no))
+		gt := withLineup(lt, ev.Lineup(g.No, no)).GameTeam(color)
 		delete(gt, "preparedTeam") // not in the Java scoreboard's team database
 		pg.Teams = append(pg.Teams, gt)
 		names = append(names, lt.Name)

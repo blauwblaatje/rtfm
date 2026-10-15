@@ -657,6 +657,17 @@ func (st *state) apply(e *Event) error {
 			}
 			f.BoxTrip = e.BoxTrip
 		}
+		// A box trip that started at this position in this jam without a
+		// known skater is this skater's (README "Box trips"): the box timer
+		// sent "the pivot" and the number is filled in later, as in Java,
+		// where a box trip belongs to its fielding.
+		if f.Skater != "" && f.BoxTrip == "" {
+			for _, bt := range st.s.BoxTrips {
+				if bt.Skater == "" && bt.Team == e.Team && bt.Start.Jam == e.Jam && bt.Start.Position == e.Position {
+					bt.Skater = f.Skater
+				}
+			}
+		}
 		st.setFielding(tj, e.Position, f)
 	case "LineupCopied":
 		from, err := st.teamJam(e.FromJam, e.Team)
@@ -805,6 +816,22 @@ func (st *state) apply(e *Event) error {
 				return fmt.Errorf("box trip %q has not ended, so its end can't be moved", bt.ID)
 			}
 			bt.End = &BoxPoint{Jam: e.End.Jam, BetweenJams: e.End.BetweenJams, AfterStarPass: e.End.AfterStarPass}
+		}
+	case "BoxTripAssigned":
+		// The box timer found out who sat: the trip's position in its start
+		// jam (Java BoxTrip.CurrentFielding). A trip without a skater takes
+		// the skater at that position, if the lineup has one.
+		bt, err := get(st.boxTrips, "box trip", e.BoxTrip)
+		if err != nil {
+			return err
+		}
+		bt.Start.Position = e.Position
+		if bt.Skater == "" {
+			if tj, err := st.teamJam(bt.Start.Jam, bt.Team); err == nil {
+				if f := tj.Lineup[e.Position]; f != nil && f.Skater != "" && f.BoxTrip == "" {
+					bt.Skater = f.Skater
+				}
+			}
 		}
 	case "BoxTripReopened":
 		bt, err := get(st.boxTrips, "box trip", e.BoxTrip)

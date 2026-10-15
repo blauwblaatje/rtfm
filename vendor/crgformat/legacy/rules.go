@@ -98,13 +98,19 @@ type RuleDefinition struct {
 	Name    string `json:"name"`
 	Kind    string `json:"kind"` // integer, long, boolean, string, time
 	Default string `json:"default"`
+	// As Java's Rules tab shows it: what the rule is, and for a boolean
+	// what true and false mean ("Count Down" / "Count Up").
+	Description string `json:"description,omitempty"`
+	TrueLabel   string `json:"trueLabel,omitempty"`
+	FalseLabel  string `json:"falseLabel,omitempty"`
 }
 
 // RuleDefinitions lists the rules of a scoreboard version, sorted by name.
 func RuleDefinitions(version string) []RuleDefinition {
 	var out []RuleDefinition
 	for name, d := range ruleDefaults[version] {
-		out = append(out, RuleDefinition{Name: name, Kind: d.Kind, Default: d.Default})
+		t := ruleTexts[name]
+		out = append(out, RuleDefinition{Name: name, Kind: d.Kind, Default: d.Default, Description: t.description, TrueLabel: t.trueLabel, FalseLabel: t.falseLabel})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

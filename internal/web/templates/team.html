@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{.Team}} · {{.Tournament}} · RTFM</title>
+<link rel="icon" href="/static/icon.svg">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-token="{{.Token}}">
+<main class="narrow">
+  <header class="top">
+    <span class="logo" title="Roller derby Tournament Fixture Maker">RTFM</span>
+    <div>
+      <h1>{{.Team}}</h1>
+      <p class="muted" id="meta">{{.Tournament}}</p>
+    </div>
+  </header>
+  <p class="small">Your games at {{.Tournament}}. For each game, tick the skaters who play (at most {{.Max}}) and pick
+    your captain; they go on the game's IGRF and scoreboard. When you're the home team, the higher seed, you also pick
+    your bench and uniform colour. Skaters you don't tick stay on the IGRF, crossed out. You can change it all until
+    the game's line-ups close.
+    <b>This page's link is your team's own:</b> share it only with who does your team's paperwork.</p>
+  <section id="games" aria-label="Games"><p class="muted">Loading…</p></section>
+</main>
+<footer>RTFM · Roller derby Tournament Fixture Maker</footer>
+<script src="/static/team.js"></script>
+</body>
+</html>

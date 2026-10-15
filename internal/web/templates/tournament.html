@@ -21,20 +21,39 @@
     <label>Ruleset <select id="rules"></select></label>
     <label>Statsbook paper <select id="paper"></select></label>
     <form method="post" id="allForm">
-      <input type="hidden" name="choices" id="allChoices">
       <input type="hidden" name="rules" id="allRules">
       <input type="hidden" name="paper" id="allPaper">
-      <button type="submit" class="primary">Download all (zip)</button>
+      <input type="hidden" name="games" id="allGames">
+      <input type="hidden" name="label" id="allLabel">
+      <button type="submit" class="primary" id="allButton">Download all (zip)</button>
     </form>
     <button type="button" id="reset" class="quiet">Back to the defaults</button>
   </section>
-  <p class="muted small">Pick the teams of bracket games and each game's crew; RTFM remembers them in this browser. The
-    zip holds a statsbook per game whose teams are known, and one file with all of them for the CRG scoreboard
+  <p class="muted small">Pick the teams of bracket games and each game's crew; they're kept with this tournament, for
+    everyone who opens it. Every team has its own link (under <i>Teams and charters</i>) to pick, per game, the skaters
+    who play and the captain, and as the home team its bench and uniform colour; that goes on the IGRF and scoreboard.
+    The tabs show one day's games; the zip then holds those. It has a statsbook per game whose teams are known, and one file with all of them for the CRG scoreboard
     {{.Java}} (Settings, Data Management, Import JSON).</p>
 
+  <nav id="tabs" class="tabs" aria-label="Which games"></nav>
   <section id="games" aria-label="Games"><p class="muted">Loading…</p></section>
 
   <details id="teamsBox"><summary>Teams and charters</summary><div id="teams"></div></details>
+  <details id="settingsBox">
+    <summary>Line-ups: benches and deadline</summary>
+    <p class="muted small">Through its own link every team picks, per game, the skaters who play and the captain; the
+      home team also its bench and uniform colour. A game's line-ups close some time before it starts; open or close
+      one game's with the picker under its time.</p>
+    <form id="settingsForm" class="pickRow">
+      <label>Bench <input id="bench0" required></label>
+      <label>The other bench <input id="bench1" required></label>
+      <label>Line-ups close, hours before the game <input id="closeHours" type="number" min="0" max="336" step="0.25" required></label>
+      <label>The venue's time zone <input id="timeZone" list="zones" placeholder="Europe/Stockholm"><datalist id="zones"></datalist>
+        <span class="muted small" id="zoneNote"></span></label>
+      <button type="submit" class="primary">Save</button>
+    </form>
+    <p class="small" id="settingsMsg" role="status"></p>
+  </details>
   <details id="crewsBox" open>
     <summary>Crews and officials</summary>
     <p class="muted small">The officials go on the IGRF with their league and certification. Fill those in from WFTDA's
@@ -54,6 +73,7 @@
       <a href="https://resources.wftda.org/officiating/roller-derby-certification-program-for-officials/roster-of-certified-officials/" target="_blank" rel="noopener">the roster</a>
       in your browser, save the page (Ctrl+S, "Webpage, HTML only"), and
       <label class="link">upload it here <input type="file" id="fillRosterFile" accept=".html,.htm" hidden></label>.</p>
+    <nav id="crewTabs" class="tabs" aria-label="Crews"></nav>
     <div id="crews"></div>
   </details>
   <details id="notesBox"><summary>Notes from reading the sheets</summary><ul id="notes" class="small"></ul></details>

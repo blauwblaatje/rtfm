@@ -1,0 +1,52 @@
+// Code generated from the Java scoreboard's Rule.java (rollerderby/scoreboard,
+// GPL-3): each rule's description and, for a yes/no rule, what true and false
+// mean, as Java's Rules tab shows them. DO NOT EDIT.
+
+package legacy
+
+type ruleText struct{ description, trueLabel, falseLabel string }
+
+var ruleTexts = map[string]ruleText{
+	"Intermission.ClockDirection":            {"Which way should the intermission clock count?", "Count Down", "Count Up"},
+	"Intermission.Durations":                 {"List of the duration of intermissions as they appear in the game, separated by commas.", "", ""},
+	"Jam.ClockDirection":                     {"Which way should the jam clock count?", "Count Down", "Count Up"},
+	"Jam.Duration":                           {"Maximum duration of a jam", "", ""},
+	"Jam.InjuryContinuation":                 {"A jam called for injury can be followed by a continuation jam.", "Enabled", "Disabled"},
+	"Jam.ResetNumberEachPeriod":              {"How to handle Jam Numbers", "Reset each period", "Continue counting"},
+	"Jam.SuddenScoring":                      {"Use JRDA Sudden Scoring rule?", "Enabled", "Disabled"},
+	"Jam.SuddenScoringDuration":              {"Maximum duration of a jam when sudden scoring is in effect", "", ""},
+	"Jam.SuddenScoringMaxTrailingPoints":     {"Maximum points the trailing team may have at halftime to trigger sudden scoring.", "", ""},
+	"Jam.SuddenScoringMinPointsDifference":   {"Minimal score difference at halftime at which sudden scoring is activated.", "", ""},
+	"Lineup.ClockDirection":                  {"Which way should the lineup clock count?", "Count Down", "Count Up"},
+	"Lineup.Duration":                        {"Duration of lineup", "", ""},
+	"Lineup.OvertimeDuration":                {"Duration of lineup before an overtime jam", "", ""},
+	"Lineup.StopsPeriodClock":                {"Stop the period clock during lineup", "Enabled", "Disabled"},
+	"Penalties.DefinitionFile":               {"File that contains the penalty code definitions to be used", "", ""},
+	"Penalties.Duration":                     {"How long does a penalty last.", "", ""},
+	"Penalties.NumberToFoulout":              {"After how many penalties a skater has fouled out of the game. Note that the software currently does not support more than 9 penalties per skater.", "", ""},
+	"Penalties.PointsDeduction":              {"How many points to deduct from a team's score for each penalty", "", ""},
+	"Period.ClockDirection":                  {"Which way should the period clock count?", "Count Down", "Count Up"},
+	"Period.Duration":                        {"Duration of a period", "", ""},
+	"Period.EndBetweenJams":                  {"When can a period end?", "Anytime outside a jam", "Only on jam end"},
+	"Period.JamsPer":                         {"Number of jams per period. 0 for duration-based periods", "", ""},
+	"Period.Number":                          {"Number of periods", "", ""},
+	"Score.EnforceTimeToOr":                  {"If either team has an OR left, disallow setting final score earlier than 30s after the end of the period or earlier than 10s after the last score change", "Enabled", "Disabled"},
+	"Score.PointsOnInitial":                  {"Don't advance out of initial trip when points are added", "Enabled", "Disabled"},
+	"Score.WftdaLateChangeRule":              {"Score changes after the end of the following jam don't affect the game score. With less than 2 minutes left in the game this applies to changes after the next jam starts.", "Enabled", "Disabled"},
+	"Team.MaxRetains":                        {"How many times per game or period a team can retain an official review", "", ""},
+	"Team.OfficialReviews":                   {"How many official reviews each team is granted per game or period", "", ""},
+	"Team.OfficialReviewsPer":                {"Are official reviews granted per period or per game?", "Period", "Game"},
+	"Team.RDCLPerHalfRules":                  {"Restrict one TTO to the first two periods and one to the rest of the game. Stretch per period ORs to first two resp. all other periods.", "Enabled", "Disabled"},
+	"Team.Timeouts":                          {"How many timeouts each team is granted per game or period", "", ""},
+	"Team.TimeoutsPer":                       {"Are timeouts granted per period or per game?", "Period", "Game"},
+	"Timeout.ClockDirection":                 {"Which way should the timeout clock count?", "Count Down", "Count Up"},
+	"Timeout.ExtraJamAfterOTO":               {"Can an OTO cause an extra Jam to be played when there wouldn't be one otherwise?", "True", "False"},
+	"Timeout.JamDuring":                      {"Allow a jam to happen with stopped period clock?", "True", "False"},
+	"Timeout.NoClockStop":                    {"Should the timeout clock continue to run after the end of a timeout?", "True", "False"},
+	"Timeout.StopPeriodClockAfterTODuration": {"Stop the period clock, if a timeout lasts longer than this time. Set to a high value to disable.", "", ""},
+	"Timeout.StopPeriodClockAlways":          {"Stop the period clock on every timeout? If false, the options below control the behaviour per type of timeout.", "True", "False"},
+	"Timeout.StopPeriodClockOnOR":            {"Stop the period clock on official reviews?", "True", "False"},
+	"Timeout.StopPeriodClockOnOTO":           {"Stop the period clock on official timeouts?", "True", "False"},
+	"Timeout.StopPeriodClockOnTTO":           {"Stop the period clock on team timeouts?", "True", "False"},
+	"Timeout.TeamTODuration":                 {"Duration of a team timeout", "", ""},
+}

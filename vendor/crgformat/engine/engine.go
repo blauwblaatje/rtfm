@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -691,6 +692,14 @@ type Command struct {
 
 	Replace *Command `json:"replace,omitempty"` // replace: the command to do instead
 
+	Team     string `json:"team,omitempty"`     // box-start, trip-points: "1" or "2"
+	Skater   string `json:"skater,omitempty"`   // box-start: who sits (default: who is in Position)
+	Position string `json:"position,omitempty"` // box-start: the lineup position (default: the skater's)
+	Jammer   bool   `json:"jammer,omitempty"`   // box-start without skater and position: a jammer sat down
+	BoxTrip  string `json:"boxTrip,omitempty"`  // box-end
+	Points   int    `json:"points,omitempty"`   // trip-points: points to add (negative: take off)
+	Set      *int   `json:"set,omitempty"`      // trip-points: the trip's points instead
+
 	InjuryContinuation bool  `json:"injuryContinuation,omitempty"` // start-jam (JRDA)
 	Value              *bool `json:"value,omitempty"`              // sudden-scoring
 }
@@ -718,6 +727,12 @@ func (e *Engine) Do(c Command, src *Source) error {
 			return fmt.Errorf("replace needs the command to do instead")
 		}
 		return e.doReplace(*c.Replace, src)
+	case "box-start", "box-end", "box-assign", "trip-points":
+		batch, err := e.trackCommand(c)
+		if err != nil {
+			return err
+		}
+		return e.post(batch, at, src)
 	}
 	return e.run(c, at, src)
 }
@@ -733,6 +748,7 @@ func (e *Engine) run(c Command, at time.Time, src *Source) error {
 	started := ""
 	label := ""
 	undoable := true
+	reasonJam := "" // jam-reason: the jam
 
 	switch c.Name {
 	case "start-jam":
@@ -843,7 +859,10 @@ func (e *Engine) run(c Command, at time.Time, src *Source) error {
 		if phase != PhaseJam {
 			return conflict("no jam is running")
 		}
-		reason := map[string]string{"stop-jam": "unknown", "call-off": "calloff", "injury": "injury"}[c.Name]
+		// Stop Jam is a call-off unless the jam clock ran out: most jams
+		// end that way, and the operator picks another reason (jam-reason)
+		// for the few that don't.
+		reason := map[string]string{"stop-jam": "calloff", "call-off": "calloff", "injury": "injury"}[c.Name]
 		if c.Name == "stop-jam" && jc() >= e.cl.c[Jam].max {
 			reason = "time" // the Jam Timer's whistle at the end of the jam clock
 		}
@@ -920,6 +939,7 @@ func (e *Engine) run(c Command, at time.Time, src *Source) error {
 			}
 			id = j.ID
 		}
+		reasonJam = id
 		u := ev{"type": "JamUpdated", "jam": id, "reason": c.Reason}
 		if c.Detail != "" {
 			u["detail"] = c.Detail
@@ -990,6 +1010,17 @@ func (e *Engine) run(c Command, at time.Time, src *Source) error {
 	seqs, err := e.commit(at, src, batch)
 	if err != nil {
 		return err
+	}
+	// A reason picked right after the jam ended joins that step: Undo of
+	// Stop Jam takes it along, instead of being blocked by it.
+	if c.Name == "jam-reason" && len(e.undo) > 0 {
+		top := e.undo[len(e.undo)-1]
+		for _, x := range e.events {
+			if x.Type == "JamEnded" && x.Jam == reasonJam && slices.Contains(top.seqs, x.Seq) {
+				top.seqs = append(top.seqs, seqs...)
+				break
+			}
+		}
 	}
 	if undoable {
 		if c.Name == "start-jam" {
@@ -1106,7 +1137,7 @@ func describe(typ string) string {
 		return "a lead, lost, call-off or star pass mark"
 	case "PenaltyIssued", "PenaltyUpdated":
 		return "a penalty"
-	case "BoxTripStarted", "BoxTripEnded", "BoxTripMoved":
+	case "BoxTripStarted", "BoxTripEnded", "BoxTripMoved", "BoxTripAssigned":
 		return "a box trip"
 	case "TimeoutUpdated", "OfficialReviewResolved":
 		return "the timeout type"
@@ -1239,12 +1270,21 @@ func (e *Engine) Post(events []map[string]any, src *Source) error {
 				b["flags"] = "ALT"
 			}
 		}
+		batch[i] = b
+	}
+	return e.post(batch, at, src)
+}
+
+// post writes events from a screen (Post, or a command that works them out
+// for it), with the clocks they need and the automatic trips.
+func (e *Engine) post(batch []ev, at time.Time, src *Source) error {
+	for _, b := range batch {
+		typ, _ := b["type"].(string)
 		for _, name := range e.v.RequiredClocks(typ) {
 			if _, ok := b[name]; !ok {
 				b[name] = map[string]int64{"pc": e.cl.c[Period].at(at), "jc": e.cl.c[Jam].at(at)}[name]
 			}
 		}
-		batch[i] = b
 	}
 	if e.skipTripEvents(batch, at) {
 		return nil
