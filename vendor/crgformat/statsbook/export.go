@@ -106,6 +106,7 @@ func (x *exporter) strike(sheet string, col, row int) {
 					st.Font = &excelize.Font{}
 				}
 				st.Font.Strike = true
+				rgb(st)
 				struck, err = x.f.NewStyle(st)
 				x.struck[id] = struck
 			}
@@ -116,6 +117,27 @@ func (x *exporter) strike(sheet string, col, row int) {
 	}
 	if err != nil {
 		x.errs = append(x.errs, err)
+	}
+}
+
+// rgb drops the alpha from a style's colours as GetStyle gives them
+// ("00FFFFFF"): NewStyle reads such a colour as black, which would turn the
+// IGRF's white cells black.
+func rgb(st *excelize.Style) {
+	fix := func(c string) string {
+		if len(c) == 8 {
+			return c[2:]
+		}
+		return c
+	}
+	for i := range st.Fill.Color {
+		st.Fill.Color[i] = fix(st.Fill.Color[i])
+	}
+	if st.Font != nil {
+		st.Font.Color = fix(st.Font.Color)
+	}
+	for i := range st.Border {
+		st.Border[i].Color = fix(st.Border[i].Color)
 	}
 }
 
