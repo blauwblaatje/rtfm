@@ -403,7 +403,8 @@ func TestTeamLinks(t *testing.T) {
 	if len(sum.Teams[0].Skaters) != len(numbers) || notSkating != len(numbers)-15 || captains != 1 || sum.Teams[0].UniformColor != "Teal" {
 		t.Errorf("game 1: %d home skaters, %d not skating, %d captains, colour %q", len(sum.Teams[0].Skaters), notSkating, captains, sum.Teams[0].UniformColor)
 	}
-	// On the IGRF: all of them, the ones not playing crossed out.
+	// On the IGRF: all of them, the ones not playing with an asterisk and
+	// crossed out, as finished statsbooks have it.
 	_, sb := do("GET", base+"/game/"+itoa(g1.No)+"/statsbook.xlsx", nil)
 	f, err := excelize.OpenReader(bytes.NewReader(sb))
 	if err != nil {
@@ -417,10 +418,20 @@ func TestTeamLinks(t *testing.T) {
 			continue
 		}
 		id, _ := f.GetCellStyle("IGRF", cells[0])
-		if st, _ := f.GetStyle(id); st != nil && st.Font != nil && st.Font.Strike {
+		col, row, _ := excelize.CellNameToCoordinates(cells[0])
+		numCell, _ := excelize.CoordinatesToCellName(col-1, row)
+		num, _ := f.GetCellValue("IGRF", numCell)
+		st, _ := f.GetStyle(id)
+		if st != nil && st.Font != nil && st.Font.Strike {
 			struck++
+			if num != sk.Number+"*" {
+				t.Errorf("%s crossed out as %q, want %q", sk.Name, num, sk.Number+"*")
+			}
 		} else {
 			plain++
+			if num != sk.Number {
+				t.Errorf("%s playing as %q", sk.Name, num)
+			}
 		}
 	}
 	if plain != 15 || struck != len(tp.Skaters)-15 {

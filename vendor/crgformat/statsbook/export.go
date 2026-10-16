@@ -309,20 +309,17 @@ func (x *exporter) igrf() {
 			}
 			num := sk.Number
 			notSkating := sk.Status == "notInGame" || slices.Contains(strings.Fields(sk.Flags), "ALT")
-			if notSkating && x.s.State == "prepared" {
-				// Before the game: on the charter, not on this game's
-				// roster. Crossed out, as on a paper IGRF.
-				x.str(sheetIGRF, col, row, num)
-				x.str(sheetIGRF, col+1, row, sk.Name)
-				x.strike(sheetIGRF, col, row)
-				x.strike(sheetIGRF, col+1, row)
-				continue
-			}
 			if notSkating {
 				num += "*" // StatsBook Manual: an asterisk marks a skater who didn't skate
 			}
 			x.str(sheetIGRF, col, row, num)
 			x.str(sheetIGRF, col+1, row, sk.Name)
+			if notSkating {
+				// and crossed out, number and name, as finished statsbooks
+				// have it (569 of 737 checked; the rest the one or the other)
+				x.strike(sheetIGRF, col, row)
+				x.strike(sheetIGRF, col+1, row)
+			}
 		}
 		for _, sk := range t.Skaters {
 			if hasFlag(sk.Flags, "C") {

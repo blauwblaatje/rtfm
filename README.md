@@ -49,7 +49,8 @@ the organiser picked the team for them. Per game the team ticks the skaters
 who play (from its charter, at most 15) and picks a captain among them; the
 home team, the higher seed, also picks its bench and uniform colour. The
 game's statsbook and CRG file then have every skater of the charter, the
-ones not playing crossed out on the IGRF (Not Skating on the scoreboard),
+ones not playing marked with an asterisk and crossed out on the IGRF, as
+finished statsbooks have them (Not Skating on the scoreboard),
 the captain flagged, and the home team's colour unless the organiser typed
 another. The team page keeps up by itself too, without touching a game
 with changes not saved yet. The benches aren't on the IGRF: the tournament page shows each
