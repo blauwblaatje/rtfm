@@ -63,7 +63,7 @@ type Site struct {
 
 	mu     sync.Mutex
 	events map[string]*fixture.Event
-	links  map[string]string // a team link's token -> its tournament's id
+	links  map[string]string // a team link's or public calendar's token -> its tournament's id
 
 	saveMu sync.Mutex // tournaments being written to disk
 
@@ -109,8 +109,8 @@ func New(cfg Config) (*Site, error) {
 	return s, nil
 }
 
-// indexLinks finds the team links of the tournaments kept on disk, so a
-// team's link works after a restart.
+// indexLinks finds the team links and public calendars of the tournaments
+// kept on disk, so they work after a restart.
 func (s *Site) indexLinks() {
 	list, _ := filepath.Glob(filepath.Join(s.cfg.Data, "*.json"))
 	for _, f := range list {
@@ -119,11 +119,15 @@ func (s *Site) indexLinks() {
 			continue
 		}
 		var ev struct {
-			ID    string         `json:"id"`
-			Links map[int]string `json:"links"`
+			ID       string         `json:"id"`
+			Links    map[int]string `json:"links"`
+			Calendar string         `json:"calendarLink"`
 		}
 		if json.Unmarshal(data, &ev) != nil || !idRe.MatchString(ev.ID) {
 			continue
+		}
+		if ev.Calendar != "" {
+			s.links[ev.Calendar] = ev.ID
 		}
 		for _, token := range ev.Links {
 			s.links[token] = ev.ID
@@ -131,8 +135,8 @@ func (s *Site) indexLinks() {
 	}
 }
 
-// linked gives a tournament's teams links (one loaded before there were
-// any), keeps it if that made any, and knows them.
+// linked gives a tournament's teams links and a public calendar (one
+// loaded before there were any), keeps it if that made any, and knows them.
 func (s *Site) linked(ev *fixture.Event) {
 	if ev.EnsureLinks() {
 		s.save(ev)
@@ -141,6 +145,7 @@ func (s *Site) linked(ev *fixture.Event) {
 	for _, token := range ev.TeamLinks() {
 		s.links[token] = ev.ID
 	}
+	s.links[ev.CalendarToken()] = ev.ID
 	s.mu.Unlock()
 }
 
@@ -162,6 +167,8 @@ func (s *Site) Handler() http.Handler {
 	mux.HandleFunc("PUT /t/{id}/settings", s.withEvent(s.putSettings))
 	mux.HandleFunc("DELETE /t/{id}/games", s.withEvent(s.clearChoices))
 	mux.HandleFunc("POST /t/{id}/teams/{no}/link", s.withEvent(s.newLink))
+	mux.HandleFunc("POST /t/{id}/calendar/link", s.withEvent(s.newCalendarLink))
+	mux.HandleFunc("GET /calendar/{file}", s.calendar)
 	mux.HandleFunc("GET /t/{id}/crews", s.withEvent(s.getCrews))
 	mux.HandleFunc("PUT /t/{id}/crews", s.withEvent(s.putCrews))
 	mux.HandleFunc("POST /t/{id}/crews/roster", s.withEvent(s.fillFromRoster))
@@ -192,11 +199,11 @@ func (s *Site) logRequests(h http.Handler) http.Handler {
 		if m := pathID.FindStringSubmatch(r.URL.Path); m != nil {
 			id = m[1]
 		}
-		if m := teamPath.FindStringSubmatch(r.URL.Path); m != nil {
+		if m := linkPath.FindStringSubmatch(r.URL.Path); m != nil {
 			s.mu.Lock()
 			id = s.links[m[1]]
 			s.mu.Unlock()
-			uri = strings.Replace(uri, m[1], "<link>", 1) // the team's secret
+			uri = strings.Replace(uri, m[1], "<link>", 1) // the team's or calendar's secret
 		}
 		msg := fmt.Sprintf("%s %s %d %s %dB", r.Method, uri, rec.status, time.Since(start).Round(time.Millisecond), rec.size)
 		if rec.status >= 400 && rec.errBody.Len() > 0 {
@@ -391,6 +398,7 @@ type EventView struct {
 	Loaded   time.Time      `json:"loaded"`
 	Missing  map[int]string `json:"missing"`
 	Settings SettingsView   `json:"settings"`
+	Calendar string         `json:"calendar"` // the public calendar: "/calendar/<token>.ics"
 }
 
 // TeamView is a team with its charter.
@@ -472,7 +480,7 @@ func (s *Site) data(w http.ResponseWriter, r *http.Request, ev *fixture.Event) {
 	t := ev.T
 	v := EventView{ID: ev.ID, Name: t.Name, Dates: t.Dates, Venue: strings.Trim(strings.Join([]string{t.Venue.Name, t.Venue.City, t.Venue.Country}, ", "), ", "),
 		Host: t.HostLeague, Notes: append([]string{}, ev.Notes...), Java: fixture.JavaVersion, Loaded: ev.Loaded, Blanks: s.blanks(),
-		Missing: ev.Missing, Settings: settingsView(ev), Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}, Rulesets: []string{}}
+		Missing: ev.Missing, Settings: settingsView(ev), Calendar: "/calendar/" + ev.CalendarToken() + ".ics", Teams: []TeamView{}, Games: []GameView{}, Crews: []CrewView{}, Rulesets: []string{}}
 	if v.Missing == nil {
 		v.Missing = map[int]string{}
 	}

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -511,5 +512,127 @@ func TestTeamLinks(t *testing.T) {
 	if strings.Contains(string(all), strings.TrimPrefix(home.Link, "/team/")) || !strings.Contains(string(own), "line-up: 15 skaters") ||
 		!strings.Contains(string(own), "GET /team/<link>/data.json 200") {
 		t.Errorf("logs:\n%s", own)
+	}
+}
+
+// The public calendar: the games, on the venue's clock, with the teams of
+// bracket games once picked; nothing that leads to the organisers' page.
+func TestCalendar(t *testing.T) {
+	app, err := os.ReadFile(filepath.Join(testData, "sanctioning/2026-wftda-championships.xlsx"))
+	if err != nil {
+		t.Skip("no Championships application")
+	}
+	logDir, data := t.TempDir(), t.TempDir()
+	lg, _ := logs.Open(logDir, nil)
+	site, _ := New(Config{Data: data, Fetch: localSheets, Logs: lg})
+	ts := httptest.NewServer(site.Handler())
+	defer ts.Close()
+	ev, err := fixture.Load(app, nil, localSheets, fixture.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	site.events[ev.ID] = ev
+	site.linked(ev)
+	get := func(url string) (int, string, string) {
+		t.Helper()
+		r, err := http.Get(url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer r.Body.Close()
+		b, _ := io.ReadAll(r.Body)
+		return r.StatusCode, r.Header.Get("Content-Type"), string(b)
+	}
+	var v EventView
+	_, _, b := get(ts.URL + "/t/" + ev.ID + "/data.json")
+	json.Unmarshal([]byte(b), &v)
+	if !regexp.MustCompile(`^/calendar/[0-9a-f]{32}\.ics$`).MatchString(v.Calendar) {
+		t.Fatalf("calendar link %q", v.Calendar)
+	}
+	// A bracket game with a team picked.
+	var bracket GameView
+	for _, g := range v.Games {
+		if !g.Fixed[0] {
+			bracket = g
+			break
+		}
+	}
+	if bracket.No == 0 {
+		t.Fatal("no bracket game")
+	}
+	picked := v.Teams[0]
+	body, _ := json.Marshal(fixture.ChoicePatch{Side: 0, Team: &picked.No})
+	req, _ := http.NewRequest("PATCH", ts.URL+"/t/"+ev.ID+"/games/"+itoa(bracket.No), bytes.NewReader(body))
+	if r, err := http.DefaultClient.Do(req); err != nil || r.StatusCode != 200 {
+		t.Fatalf("pick: %v %v", r, err)
+	}
+
+	code, ctype, ics := get(ts.URL + v.Calendar)
+	if code != 200 || ctype != "text/calendar; charset=utf-8" {
+		t.Fatalf("calendar: %d %s", code, ctype)
+	}
+	if strings.Count(ics, "BEGIN:VEVENT") != len(v.Games) || !strings.HasPrefix(ics, "BEGIN:VCALENDAR\r\n") || !strings.HasSuffix(ics, "END:VCALENDAR\r\n") {
+		t.Errorf("%d events for %d games", strings.Count(ics, "BEGIN:VEVENT"), len(v.Games))
+	}
+	for _, l := range strings.Split(strings.TrimSuffix(ics, "\r\n"), "\r\n") {
+		if len(l) > 75 || strings.Contains(l, "\n") {
+			t.Errorf("line not folded: %q", l)
+		}
+	}
+	unfolded := strings.ReplaceAll(ics, "\r\n ", "")
+	g1 := v.Games[0]
+	// Game 1, 10:00 in Malmö: 08:00 UTC; until the next game on its track.
+	want := []string{
+		"X-WR-CALNAME:" + strings.ReplaceAll(v.Name, ",", `\,`),
+		"SUMMARY:Game 1: " + g1.Sides[0] + " vs " + g1.Sides[1],
+		"DTSTART:20261015T080000Z",
+		fmt.Sprintf("SUMMARY:Game %d: %s vs %s", bracket.No, picked.Name, bracket.Sides[1]),
+		"LOCATION:",
+	}
+	for _, w := range want {
+		if !strings.Contains(unfolded, w) {
+			t.Errorf("calendar without %q:\n%s", w, unfolded)
+		}
+	}
+	if strings.Contains(ics, ev.ID) || strings.Contains(ics, "/team/") {
+		t.Error("the calendar leads to the organisers' page or a team's")
+	}
+	for _, c := range ev.CrewList() {
+		for _, o := range c.Officials {
+			if o.Name != "" && strings.Contains(unfolded, o.Name) {
+				t.Errorf("an official on the calendar: %s", o.Name)
+			}
+		}
+	}
+
+	// It works after a restart.
+	site2, _ := New(Config{Data: data, Fetch: localSheets})
+	ts2 := httptest.NewServer(site2.Handler())
+	defer ts2.Close()
+	if code, _, _ := get(ts2.URL + v.Calendar); code != 200 {
+		t.Errorf("after a restart: %d", code)
+	}
+
+	// A new link: the old one stops working.
+	r, _ := http.Post(ts.URL+"/t/"+ev.ID+"/calendar/link", "", nil)
+	var nl map[string]string
+	json.NewDecoder(r.Body).Decode(&nl)
+	r.Body.Close()
+	if nl["link"] == "" || nl["link"] == v.Calendar {
+		t.Fatalf("new link %q", nl["link"])
+	}
+	if code, _, _ := get(ts.URL + v.Calendar); code != 404 {
+		t.Errorf("old link: %d", code)
+	}
+	if code, _, _ := get(ts.URL + nl["link"]); code != 200 {
+		t.Errorf("new link: %d", code)
+	}
+	if code, _, _ := get(ts.URL + "/calendar/" + ev.ID + ".ics"); code != 404 {
+		t.Errorf("the tournament's id as a calendar: %d", code)
+	}
+	all, _ := os.ReadFile(filepath.Join(logDir, "rtfm.log"))
+	token := strings.TrimSuffix(strings.TrimPrefix(nl["link"], "/calendar/"), ".ics")
+	if strings.Contains(string(all), token) || !strings.Contains(string(all), "/calendar/<link>") {
+		t.Errorf("the calendar's link in the log")
 	}
 }

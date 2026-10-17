@@ -68,12 +68,16 @@ func NewToken() string {
 	return hex.EncodeToString(b)
 }
 
-// EnsureLinks gives every team without a link one; it says whether any
-// was made.
+// EnsureLinks gives every team without a link one, and the tournament a
+// public calendar; it says whether any was made.
 func (ev *Event) EnsureLinks() bool {
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
 	made := false
+	if ev.CalendarLink == "" {
+		ev.CalendarLink = NewToken()
+		made = true
+	}
 	for _, tm := range ev.T.Teams {
 		if ev.Links[tm.No] == "" {
 			if ev.Links == nil {

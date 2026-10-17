@@ -92,11 +92,13 @@ fieldset.teamGame p { margin: 6px 0; }
 .skaters { display: grid; grid-template-columns: repeat(auto-fill, minmax(15em, 1fr)); gap: 2px 12px; }
 label.skater { margin: 0; padding: 3px 6px; border-radius: 6px; font-size: 0.95em; color: var(--ink); }
 label.skater.on { background: var(--surface); }
-button.small { padding: 2px 8px; font-size: 0.9em; }
+button.small, .button.small { padding: 2px 8px; font-size: 0.9em; }
 .lineup { font-size: 0.85em; color: var(--ink-2); margin-top: 4px; }
 .lineup.none { color: var(--muted); }
 .linkCell { display: flex; gap: 6px; align-items: center; }
 .linkCell input { min-width: 14em; font-size: 0.85em; padding: 3px 6px; }
+#calendarBox .linkCell { flex-wrap: wrap; }
+#calendarBox .linkCell input { flex: 1 1 22em; min-width: 0; }
 .bench { font-size: 0.85em; font-weight: 600; margin-top: 4px; }
 .bench.none { font-weight: 400; color: var(--muted); }
 select.mode { width: auto; margin-top: 4px; padding: 2px 4px; font-size: 0.8em; }

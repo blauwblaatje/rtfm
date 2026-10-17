@@ -39,6 +39,21 @@
   <section id="games" aria-label="Games"><p class="muted">Loading…</p></section>
 
   <details id="teamsBox"><summary>Teams and charters</summary><div id="teams"></div></details>
+  <details id="calendarBox">
+    <summary>Public calendar</summary>
+    <p class="muted small">The games as a calendar, for the audience or a website: the teams (a bracket game's once
+      they're picked), the time, the track and the venue; nothing of the crews or line-ups, and the link doesn't lead
+      to this page. Subscribe to it in Google Calendar (<i>Other calendars</i>, <i>From URL</i>), Outlook or Apple's
+      Calendar; they keep up with changes by themselves, Google every few hours (up to a day). A game is on it for two
+      hours, or until the next game on its track.</p>
+    <div class="linkCell">
+      <input readonly id="calLink" aria-label="The public calendar's link">
+      <button type="button" class="small" id="calCopy">Copy</button>
+      <a class="button small" id="calGoogle" target="_blank" rel="noopener">Add to Google Calendar</a>
+      <a class="button small" id="calWebcal">Subscribe in another calendar</a>
+      <button type="button" class="quiet small" id="calNew" title="the old link stops working">New link</button>
+    </div>
+  </details>
   <details id="settingsBox">
     <summary>Line-ups: benches and deadline</summary>
     <p class="muted small">Through its own link every team picks, per game, the skaters who play and the captain; the

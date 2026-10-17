@@ -95,13 +95,15 @@ type Event struct {
 	// what they said through them ("game/team").
 	Links   map[int]string     `json:"links,omitempty"`
 	Lineups map[string]*Lineup `json:"lineups,omitempty"`
+	// CalendarLink is the public calendar's secret: the games, for anyone.
+	CalendarLink string `json:"calendarLink,omitempty"`
 	// Settings are the organiser's for the line-ups, and LineupModes the
 	// games whose line-ups the organiser opened or closed, whatever the
 	// deadline.
 	Settings    Settings       `json:"settings"`
 	LineupModes map[int]string `json:"lineupModes,omitempty"`
 
-	mu sync.RWMutex // Crews, Choices, Links, Lineups, Settings, LineupModes: edited while games are made
+	mu sync.RWMutex // Crews, Choices, Links, CalendarLink, Lineups, Settings, LineupModes: edited while games are made
 	// choiceMu keeps a change to a game's choice whole: read, changed,
 	// stored, without another in between.
 	choiceMu sync.Mutex

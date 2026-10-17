@@ -58,6 +58,18 @@ side's bench and line-up under its name, and the zip's README lists them.
 The link doesn't say which tournament it is, so a team can't get to the
 organisers' page from it, and it's kept out of the logs (`/team/<link>`).
 
+**Public calendar.** Every tournament has a calendar of its games
+(`/calendar/<secret>.ics`, under *Public calendar*: copy it, add it to
+Google Calendar, subscribe in another calendar, or make a new link), for
+the audience or a website. Per game it has the teams (a bracket game's
+once picked, "Winner Game 3" until then), the time on the venue's clock,
+the track and the venue; nothing of the crews or line-ups, and like a team
+link it doesn't lead to the organisers' page and is kept out of the logs.
+A game is on it for two hours, or until the next game on its track; a game
+with a date and no time, all day. Calendars that subscribed keep up by
+themselves (Google every few hours, up to a day: it can't be hurried), and
+for that RTFM has to be reachable from the internet.
+
 Under *Line-ups: benches and deadline* the organiser names the two benches
 (default "Pivot line" and "Jam line"; renaming them renames the picks too),
 sets how long before a game its line-ups close (default 2 hours) and the

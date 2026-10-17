@@ -187,6 +187,28 @@ $("teams").addEventListener("click", async (e) => {
   renderTeams();
 });
 
+// The public calendar: its link, to copy or subscribe to.
+function renderCalendar() {
+  const url = location.origin + E.calendar, webcal = url.replace(/^https?:/, "webcal:");
+  $("calLink").value = url;
+  $("calGoogle").href = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcal);
+  $("calWebcal").href = webcal;
+}
+
+$("calCopy").addEventListener("click", async (e) => {
+  const b = e.target;
+  try { await navigator.clipboard.writeText($("calLink").value); b.textContent = "Copied"; } catch (err) { $("calLink").select(); }
+  setTimeout(() => { b.textContent = "Copy"; }, 1500);
+});
+
+$("calNew").addEventListener("click", async () => {
+  if (!confirm("Give the public calendar a new link? The old one stops working, also for whoever subscribed to it.")) return;
+  const r = await fetch(`/t/${id}/calendar/link`, { method: "POST" });
+  if (!r.ok) { alert(await r.text()); return; }
+  E.calendar = (await r.json()).link;
+  renderCalendar();
+});
+
 // The line-up settings: the benches' names, the deadline, the time zone.
 function renderSettings() {
   const st = E.settings;
@@ -219,6 +241,7 @@ function renderInfo() {
     : `<option value="">none on this site</option>`;
   if (!E.blanks.includes(opts.paper)) opts.paper = E.blanks[0] || "";
   renderTeams();
+  renderCalendar();
   renderSettings();
   $("notesBox").hidden = !E.notes.length;
   $("notes").innerHTML = E.notes.map((n) => `<li>${esc(n)}</li>`).join("");
@@ -262,8 +285,10 @@ async function refresh(polled) {
   E.games = d.games || [];
   E.crews = d.crews || [];
   E.teams = d.teams || [];
+  E.calendar = d.calendar;
   render();
   renderTeams();
+  renderCalendar();
   if (d.settings && !settingsEdited && !busy($("settingsForm"))) { E.settings = d.settings; renderSettings(); }
 }
 

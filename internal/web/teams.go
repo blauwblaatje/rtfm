@@ -20,9 +20,9 @@ import (
 
 var tokenRe = regexp.MustCompile(`^[0-9a-f]{32}$`)
 
-// teamPath finds a team link in a request's path, to keep it out of the
-// logs: it is the team's secret.
-var teamPath = regexp.MustCompile(`^/team/([0-9a-f]{32})(/|$)`)
+// linkPath finds a team link or public calendar in a request's path, to
+// keep it out of the logs: it is a secret.
+var linkPath = regexp.MustCompile(`^/(?:team|calendar)/([0-9a-f]{32})(/|\.ics$|$)`)
 
 // byToken is the tournament and team of a team link (0 if none).
 func (s *Site) byToken(token string) (*fixture.Event, int) {
