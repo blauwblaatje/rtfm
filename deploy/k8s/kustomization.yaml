@@ -11,4 +11,4 @@ resources:
 images:
   - name: rtfm
     newName: ghcr.io/blauwblaatje/rtfm # or rtfm for an image loaded with make k3s-import (newTag: latest)
-    newTag: 0.1.0 # a release: git tag v0.1.0
+    newTag: 0.1.1 # a release: git tag v0.1.1
