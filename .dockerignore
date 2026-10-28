@@ -3,3 +3,4 @@ bin
 dist
 data
 vendor/crgformat/crgserver
+.github

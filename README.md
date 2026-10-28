@@ -140,15 +140,23 @@ statsbooks are in the image; to use others, mount a folder on `/blank` (see
 ## k3s
 
 ```sh
-make image k3s-import          # build, and load into k3s without a registry
 kubectl apply -k deploy/k8s    # namespace rtfm, 1Gi volume, deployment, service, ingress
 ```
 
-Change the host in `deploy/k8s/ingress.yaml` (k3s's Traefik serves it). For
-a registry, set the image in `deploy/k8s/kustomization.yaml` and build both
-architectures (a Raspberry Pi node is arm64) with
-`make image-multi IMAGE=ghcr.io/<you>/rtfm`. One replica: the loaded
-tournaments live on one ReadWriteOnce volume.
+Change the host in `deploy/k8s/ingress.yaml` (k3s's Traefik serves it). One
+replica: the loaded tournaments live on one ReadWriteOnce volume.
+
+The image is `ghcr.io/blauwblaatje/rtfm`, for amd64 and arm64 (a Raspberry
+Pi node). GitHub Actions (`.github/workflows/image.yml`) builds it: a tag
+`vX.Y.Z` publishes `X.Y.Z`, `X.Y` and `latest`, which Renovate can follow; a
+push to main publishes `sha-<commit>`. To release:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+Without a registry, `make image k3s-import` loads the image into k3s; set
+`newName: rtfm` and `newTag: latest` in `deploy/k8s/kustomization.yaml`.
 
 ## Developing
 
